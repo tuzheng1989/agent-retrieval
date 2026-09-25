@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install with extras
+        run: pip install -e ".[api,redis,dev]"
+      - name: Run tests
+        run: pytest tests/ -q
+
+  core-zero-dep:
+    # 环境级守卫：裸环境（无任何第三方依赖）下 core 必须可导入。
+    # tests/test_core_zero_dep.py 是进程内同款守卫；本 job 证明的是"零依赖安装"本身。
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Import core in a dependency-free environment
+        run: |
+          python -m venv bare
+          bare/bin/pip install --no-deps .
+          bare/bin/python -c "import agent_retrieval.core.bm25, agent_retrieval.core.fusion, agent_retrieval.core.ports, agent_retrieval.core.resource_index, agent_retrieval.core.ranking; print('core zero-dep OK')"
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff
+      - run: ruff check .

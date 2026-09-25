@@ -1,0 +1,60 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agent-retrieval"
+version = "0.1.0"
+description = "Deterministic BM25 + vector dual-path RRF fusion retrieval kernel, with production embedder and Redis snapshot reference implementations, for agent resource discovery"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "tuzheng" }]
+keywords = ["retrieval", "bm25", "vector-search", "rrf", "fusion", "agent", "embedding"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing :: Indexing",
+    "Typing :: Typed",
+]
+# 零基础依赖：core 仅标准库；重实现（api/redis/local）按 extras 显式索取，缺失时干净报错。
+dependencies = []
+
+[project.optional-dependencies]
+api = ["requests>=2.28"]
+redis = ["redis>=5.0"]
+local = ["onnxruntime", "transformers", "tokenizers", "numpy"]
+all = ["agent-retrieval[api,redis]"]
+dev = ["pytest>=8", "pytest-asyncio", "ruff"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agent_retrieval"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "UP", "ARG"]
+ignore = [
+    "E501", # 行长交由代码风格自律（中文注释换行位置与语义绑定）
+    # 搬运自生产代码的 zip 保持无 strict 的原行为：嵌入器返回数量不齐时静默错位
+    # 是既有降级语义的一部分，strict 的运行时爆炸语义留待后续版本独立决策。
+    "B905",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# 测试替身按真实接口形状声明参数，未使用是故意的（模拟而不消费）。
+"tests/*" = ["ARG"]
