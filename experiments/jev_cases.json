@@ -1,0 +1,76 @@
+{
+  "resources": [
+    {
+      "id": "geo-query",
+      "name": "Geo Query",
+      "description": "Query population and demographic data by geographic region and year.",
+      "use_when": "A user needs population statistics for a place and time.",
+      "avoid_when": "Do not use for weather forecasts or map images."
+    },
+    {
+      "id": "doc-search",
+      "name": "Document Search",
+      "description": "Find passages and citations in uploaded documents.",
+      "use_when": "A user asks a question about uploaded files or needs source passages.",
+      "avoid_when": "Do not use for writing new files or sending email."
+    },
+    {
+      "id": "email-send",
+      "name": "Email Sender",
+      "description": "Send an email message to named recipients.",
+      "use_when": "A user asks to email someone a message.",
+      "avoid_when": "Do not use to search an inbox or summarize documents."
+    },
+    {
+      "id": "calendar-create",
+      "name": "Calendar Event Creator",
+      "description": "Create a meeting event with a date, time, and attendees.",
+      "use_when": "A user wants to schedule a meeting.",
+      "avoid_when": "Do not use to send an email without creating an event."
+    },
+    {
+      "id": "chart-render",
+      "name": "Chart Renderer",
+      "description": "Render bar and line charts from supplied numeric data.",
+      "use_when": "A user wants a visualization of data already available.",
+      "avoid_when": "Do not use to fetch missing data or write a narrative report."
+    },
+    {
+      "id": "report-write",
+      "name": "Report Writer",
+      "description": "Write a narrative report from supplied facts and evidence.",
+      "use_when": "A user asks for a written summary or report.",
+      "avoid_when": "Do not use for chart rendering or data retrieval."
+    },
+    {
+      "id": "weather-forecast",
+      "name": "Weather Forecast",
+      "description": "Get weather forecasts for a place and date.",
+      "use_when": "A user asks for future weather conditions.",
+      "avoid_when": "Do not use for historic population data."
+    },
+    {
+      "id": "inbox-search",
+      "name": "Inbox Search",
+      "description": "Search received email messages by sender, subject, and date.",
+      "use_when": "A user wants to find or inspect an existing email.",
+      "avoid_when": "Do not use to send a new message."
+    }
+  ],
+  "cases": [
+    {"id": "population", "query": "Find population data for California in 2024", "gold": "geo-query"},
+    {"id": "uploaded_contract", "query": "Find the indemnity clause in my uploaded contract", "gold": "doc-search"},
+    {"id": "send_message", "query": "Email the updated agenda to Alex", "gold": "email-send"},
+    {"id": "schedule", "query": "Schedule a meeting with Alex for Friday at 2 pm", "gold": "calendar-create"},
+    {"id": "chart", "query": "Create a bar chart of these quarterly sales figures", "gold": "chart-render"},
+    {"id": "written_report", "query": "Write a narrative report using the supplied figures", "gold": "report-write"},
+    {"id": "forecast", "query": "What is the weather forecast for Beijing tomorrow?", "gold": "weather-forecast"},
+    {"id": "received_mail", "query": "Find the email Alex sent me last Tuesday", "gold": "inbox-search"},
+    {"id": "exact", "query": "geo-query", "gold": "geo-query"},
+    {"id": "paraphrase", "query": "How many people lived in California last year?", "gold": "geo-query"},
+    {"id": "unrecalled", "query": "Count inhabitants across provinces", "gold": "geo-query"},
+    {"id": "out_of_scope", "query": "Book me a flight to Shanghai", "gold": null},
+    {"id": "email_ambiguous", "query": "Translate an email from Spanish to English", "gold": null},
+    {"id": "chart_ambiguous", "query": "Find a chart about historical rainfall", "gold": null}
+  ]
+}
