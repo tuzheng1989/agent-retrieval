@@ -142,6 +142,15 @@ The package never reads environment variables, config files, or your ContextVars
 - In-process run cache uses `ContextVar`s; call `clear_run_cache()` at run teardown to avoid cross-run leakage within a worker.
 - The `local` extra (ONNX) has no Windows ARM64 wheels — use the `api` path there.
 
+## Quality benchmarks
+
+Retrieval quality (kernel + embedder) is evaluated against two public benchmarks —
+[ToolRet](https://arxiv.org/abs/2503.01763) (tool retrieval, ~43k tools) and
+[SkillRet](https://arxiv.org/abs/2605.05726) (agent-skill retrieval, 6,006-skill
+evaluation pool) — with bm25 / fusion arms, recall / completeness / NDCG / MRR
+metrics, and a persistent vector cache. See
+[experiments/README.md](experiments/README.md#retrieval-benchmarks-toolret-tool-retrieval-and-skillret-skill-retrieval).
+
 ## License
 
 MIT

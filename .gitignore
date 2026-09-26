@@ -7,3 +7,12 @@ build/
 .ruff_cache/
 .venv/
 .staging_*
+experiments/*-result.json
+# Benchmark datasets and vector caches (downloaded, reproducible via the adapters)
+experiments/benchmarks/data/
+experiments/benchmarks/.cache/
+# Secrets (benchmark embedder credentials et al.)
+.env
+# Benchmark reports (regenerable via the runners; datasets/caches already ignored)
+experiments/*-benchmark*.json
+experiments/*-smoke.json
