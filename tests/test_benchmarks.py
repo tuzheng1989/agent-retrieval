@@ -23,7 +23,8 @@ from experiments.benchmarks.metrics import (
     recall_at_k,
     score_case,
 )
-from experiments.benchmarks.run_benchmark import case_query_text, load_env_file, run_arm
+from experiments.benchmarks.reranker import RerankError, parse_rerank_response
+from experiments.benchmarks.run_benchmark import case_query_text, load_env_file, run_arm, run_rerank_arm
 from experiments.benchmarks.skillret import skill_case, skill_corpus_text, skill_resource
 from experiments.benchmarks.toolret import round_robin, tool_case, tool_corpus_text, tool_resource
 
@@ -254,6 +255,71 @@ def test_cached_embedder_zero_pads_unembeddable_texts(tmp_path: Path):
     vectors = embedder.embed_corpus(texts + ["good-3"])
     assert inner.texts_seen == ["good-3"]            # 只嵌新文本，"bad" 不重试
     assert vectors[1] == (0.0,)
+
+
+# ---- rerank arm ----------------------------------------------------------------
+
+
+def test_parse_rerank_response_aligns_sparse_results_by_index():
+    payload = {"results": [{"index": 2, "relevance_score": 0.9},
+                           {"index": 0, "relevance_score": 0.1}]}
+    assert parse_rerank_response(payload, 3) == [0.1, float("-inf"), 0.9]
+    try:
+        parse_rerank_response({"results": [{"index": 5, "relevance_score": 1.0}]}, 3)
+        raised = False
+    except RerankError:
+        raised = True
+    assert raised  # 越界 index 显式失败
+
+
+def test_run_rerank_arm_reorders_window_and_keeps_tail_order():
+    class PreferDocsReranker:
+        """把包含 'alpha' 的文档排第一的确定性替身。"""
+
+        def rerank(self, query, documents):
+            order = sorted(range(len(documents)),
+                           key=lambda i: (0 if "alpha" in documents[i] else 1, i))
+            scores = [0.0] * len(documents)
+            for rank, index in enumerate(order):
+                scores[index] = 1.0 / (rank + 1)
+            return scores
+
+    resources = [
+        Resource("doc-a", "Alpha Doc", "alpha full-text search document"),
+        Resource("doc-b", "Beta Doc", "beta unrelated content"),
+        Resource("doc-c", "Gamma Doc", "gamma alpha also mentioned here"),
+        Resource("doc-d", "Delta Doc", "delta filler body text"),
+    ]
+    cases = [Case("c1", "alpha document", frozenset({"doc-c"}))]
+    dataset = BenchmarkDataset("synthetic", "test", skill_corpus_text, resources, cases)
+    # MockEmbedder 的向量路是零语义 hash：fusion 给出某个初始序，reranker 强制把
+    # 含 "alpha" 的文档（doc-a、doc-c）提到窗口最前——gold doc-c 因此必然改善。
+    result = run_rerank_arm(dataset, (5, 10), embedder=MockEmbedder(),
+                            reranker=PreferDocsReranker(), candidates=3,
+                            label="test")
+    assert result.metrics["recall@5"] == 1.0
+    assert result.metrics["mrr"] == 0.5  # doc-c 被排到第 2（doc-a 的 "alpha" 在语料更前）
+
+
+def test_run_rerank_arm_keeps_fusion_order_on_constant_scores():
+    """常量分 = reranker 无区分度：必须保留 fusion 序而非塌缩成 id 字典序。"""
+
+    class ConstantReranker:
+        def rerank(self, query, documents):
+            return [1.0] * len(documents)
+
+    resources = [
+        Resource("z-doc", "Zeta", "relevant zeta document about calendars"),
+        Resource("a-doc", "Alpha", "unrelated alpha filler text"),
+        Resource("m-doc", "Mid", "another unrelated filler body"),
+    ]
+    # BM25 会把 z-doc（唯一含查询词）排第一；若 rerank 塌缩成字典序，a-doc 反超。
+    cases = [Case("c1", "calendars", frozenset({"z-doc"}))]
+    dataset = BenchmarkDataset("synthetic", "test", skill_corpus_text, resources, cases)
+    result = run_rerank_arm(dataset, (5, 10), embedder=None,
+                            reranker=ConstantReranker(), candidates=3, label="test")
+    assert result.metrics["mrr"] == 1.0       # z-doc 仍在第一（fusion 序保留）
+    assert result.degraded_cases == 1          # 且如实计入退化
 
 
 # ---- .env loading -------------------------------------------------------------

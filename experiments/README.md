@@ -4,6 +4,8 @@ This evaluates a caller-side Jev judgment after `rank_candidates`. The package's
 deterministic retrieval core and dependencies are unchanged.
 
 See [jev-findings.md](jev-findings.md) for the first live run on synthetic cases.
+See [jev-benchmark-findings.md](jev-benchmark-findings.md) for the paired
+SkillRet/ToolRet pilot against their full resource pools.
 
 ## Run
 
@@ -78,12 +80,24 @@ AGENT_RETRIEVAL_EMBEDDING_API_KEY=<your key>               # required for the fu
 # AGENT_RETRIEVAL_EMBEDDING_BASE_URL=https://open.bigmodel.cn/api/paas   # default
 # AGENT_RETRIEVAL_EMBEDDING_MODEL=embedding-3              # default
 # AGENT_RETRIEVAL_EMBEDDING_DIMENSIONS=1024                # default
+
+# —— rerank arm (--arm rerank, optional): Cohere-style /rerank endpoint ————
+AGENT_RETRIEVAL_RERANK_API_KEY=<your key>                  # required for the rerank arm
+# AGENT_RETRIEVAL_RERANK_BASE_URL=https://api.siliconflow.cn/v1          # default
+# AGENT_RETRIEVAL_RERANK_MODEL=BAAI/bge-reranker-v2-m3     # default
 ```
 
-Without a key the fusion arm is skipped and the report says so; the BM25 arm always
+Without a key the fusion/rerank arm is skipped and the report says so; the BM25 arm always
 runs. A configured fusion arm is **preflighted** with one probe embedding — an
 unreachable endpoint or rejected key fails the run (exit 2) instead of silently
-reporting BM25 numbers under the fusion label. Fusion-arm corpus/query vectors are
+reporting BM25 numbers under the fusion label. The **rerank arm** (`--arm rerank`)
+is the official two-stage protocol: fusion retrieval → cross-encoder re-rank of the
+fusion top-N (`--rerank-candidates`, default 100). Only the window can be re-ordered;
+candidates beyond it keep their fusion order — a reranker cannot rescue what
+retrieval never surfaced, and measuring that boundary is the point. Any
+Cohere-style `/rerank` endpoint works (SiliconFlow / Jina / Cohere); if your LLM
+gateway also exposes `/rerank`, point `AGENT_RETRIEVAL_RERANK_BASE_URL` at it —
+the preflight tells you immediately. Fusion-arm corpus/query vectors are
 cached in `experiments/benchmarks/.cache/vectors.sqlite3` (keyed by embedder identity +
 text hash), so the corpus embedding cost is paid once across arms and reruns;
 `--no-cache` disables this.

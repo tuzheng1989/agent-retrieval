@@ -15,12 +15,18 @@ installed) or be exported in the shell — existing environment variables WIN ov
   AGENT_RETRIEVAL_EMBEDDING_BASE_URL     default https://open.bigmodel.cn/api/paas
   AGENT_RETRIEVAL_EMBEDDING_MODEL        default embedding-3
   AGENT_RETRIEVAL_EMBEDDING_DIMENSIONS   default 1024
+  AGENT_RETRIEVAL_RERANK_API_KEY         required for the rerank arm
+  AGENT_RETRIEVAL_RERANK_BASE_URL        default https://api.siliconflow.cn/v1
+  AGENT_RETRIEVAL_RERANK_MODEL           default BAAI/bge-reranker-v2-m3
 
-Without a key the fusion arm is skipped and the report says so explicitly — the
+Without a key the fusion/rerank arm is skipped and the report says so explicitly — the
 BM25 arm still runs, because both benchmarks evaluate against the full candidate
 pool and the baseline arm needs no network at all. A configured fusion arm is
 preflighted with one probe embedding: an unreachable endpoint or rejected key
 fails the run instead of silently reporting BM25 numbers under the fusion label.
+The rerank arm (``--arm rerank``) re-ranks the fusion top-N
+(``--rerank-candidates``, default 100 — the official ToolRet second stage) through
+a Cohere-style ``/rerank`` endpoint (SiliconFlow / Jina / Cohere compatible).
 
 Protocol notes: both benchmarks use binary relevance (``relevance == 1`` only),
 so the reported NDCG is the binary-gain form. Rankings are the kernel's FULL
@@ -36,6 +42,7 @@ import argparse
 import json
 import os
 import sys
+import time
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from time import perf_counter
@@ -53,6 +60,12 @@ from experiments.benchmarks import skillret, toolret
 from experiments.benchmarks.dataset import BenchmarkDataset, Case
 from experiments.benchmarks.embedder_cache import CachedEmbedder
 from experiments.benchmarks.metrics import aggregate, score_case
+from experiments.benchmarks.reranker import (
+    RERANK_DOC_FLOOR_CHARS,
+    RERANK_PAIR_BUDGET_CHARS,
+    ApiReranker,
+    RerankError,
+)
 
 _DEFAULT_DATA_DIR = Path(__file__).with_name("data")
 _DEFAULT_CACHE_PATH = Path(__file__).with_name(".cache").joinpath("vectors.sqlite3")
@@ -88,6 +101,8 @@ class ArmResult:
     metrics: dict[str, float]
     cases: int
     elapsed_seconds: float
+    #: rerank 臂：重试后仍失败、退化为 fusion 原序的 case 数（0 = 全程成功）。
+    degraded_cases: int = 0
 
 
 def load_benchmark(name: str, data_dir: Path, limit: int | None) -> BenchmarkDataset:
@@ -141,6 +156,99 @@ def case_query_text(case: Case, query_mode: str) -> str:
     return case.query
 
 
+def reranker_from_env() -> ApiReranker:
+    """Host-side rerank config assembly; empty api_key reads as no-rerank form."""
+    raw_base = os.environ.get("AGENT_RETRIEVAL_RERANK_BASE_URL", "https://api.siliconflow.cn/v1")
+    return ApiReranker(
+        # 客户端拼接 "{base}/rerank"：宽容处理填了完整端点的常见写法。
+        base_url=raw_base.removesuffix("/rerank"),
+        api_key=os.environ.get("AGENT_RETRIEVAL_RERANK_API_KEY", ""),
+        model_name=os.environ.get("AGENT_RETRIEVAL_RERANK_MODEL", "BAAI/bge-reranker-v2-m3"),
+    )
+
+
+def run_rerank_arm(
+    dataset: BenchmarkDataset,
+    k_values: tuple[int, ...],
+    *,
+    embedder: Embedder | None,
+    reranker: ApiReranker,
+    candidates: int,
+    label: str,
+    query_mode: str = "query",
+) -> ArmResult:
+    """Two-stage arm: fusion retrieval → cross-encoder re-rank of the top-N.
+
+    Only the fusion top-N window can be re-ordered; candidates beyond it keep
+    their fusion order — a reranker cannot rescue what retrieval never surfaced,
+    and that boundary is exactly what this arm is designed to measure.
+    """
+    rows: list[dict[str, float]] = []
+    started = perf_counter()
+    degraded = consecutive_failures = 0
+    for index, case in enumerate(dataset.cases):
+        query = case_query_text(case, query_mode)
+        hits = rank_candidates(
+            dataset.resources,
+            query,
+            corpus_text=dataset.corpus_text,
+            item_id=lambda resource: resource.id,
+            item_name=lambda resource: resource.name,
+            vector=embedder,
+        )
+        window = hits[:candidates]
+        # 精排输入按 query+document 总长预算截断（网关 code 1214 拒收超长对，
+        # 且多后端限制不一）；精排本就不消费全文。
+        doc_cap = max(RERANK_DOC_FLOOR_CHARS, RERANK_PAIR_BUDGET_CHARS - len(query))
+        try:
+            scores = reranker.rerank(
+                query,
+                [dataset.corpus_text(hit.item)[:doc_cap] for hit in window],
+            )
+        except RerankError as exc:
+            # 重试后仍失败：该 case 退化为 fusion 原序（rerank 是增强不是依赖），
+            # 计入 degraded；连续失败到阈值则中止——那是端点彻底不可用，不是抖动。
+            consecutive_failures += 1
+            degraded += 1
+            print(f"[{label}] case {case.id} rerank failed, keeping fusion order: {exc}",
+                  file=sys.stderr)
+            if consecutive_failures >= 5:
+                print(f"[{label}] 5 consecutive failures — rerank endpoint is down, aborting",
+                      file=sys.stderr)
+                raise
+            # 连续失败说明大概率在限流窗口内：冷却后再进下一个 case，
+            # 否则下个 case 的重试会立刻撞回同一面墙。
+            time.sleep(min(10.0 * consecutive_failures, 30.0))
+            scores = None
+        else:
+            consecutive_failures = 0
+            if scores and max(scores) - min(scores) < 1e-9:
+                # 常量分 = reranker 没有产生任何区分度（实测 paratera 的
+                # GLM-Rerank 恒返 1.0）。按重排会塌缩成 id 字典序、把有效
+                # 排序打乱——保留 fusion 序并如实计入退化。
+                scores = None
+                degraded += 1
+                print(f"[{label}] case {case.id}: rerank scores are constant — "
+                      "endpoint gave no discrimination, keeping fusion order", file=sys.stderr)
+        if scores is None:
+            ranked = [hit.item.id for hit in hits]
+        else:
+            reranked = sorted(
+                zip(window, scores), key=lambda pair: (-pair[1], pair[0].item.id),
+            )
+            ranked = [hit.item.id for hit, _ in reranked]
+            ranked += [hit.item.id for hit in hits[candidates:]]
+        rows.append(score_case(ranked, case.golds, k_values))
+        if (index + 1) % 50 == 0:
+            print(f"[{label}] {index + 1}/{len(dataset.cases)} cases ranked", file=sys.stderr)
+    return ArmResult(
+        metrics=aggregate(rows, k_values),
+        cases=len(rows),
+        elapsed_seconds=round(perf_counter() - started, 1),
+        degraded_cases=degraded,
+    )
+
+
 def run_arm(
     dataset: BenchmarkDataset,
     k_values: tuple[int, ...],
@@ -177,7 +285,10 @@ def main() -> int:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--bench", choices=("skillret", "toolret"), required=True)
-    parser.add_argument("--arm", choices=("bm25", "fusion", "both"), default="both")
+    parser.add_argument("--arm", choices=("bm25", "fusion", "rerank", "both"), default="both")
+    parser.add_argument("--rerank-candidates", type=int, default=100,
+                        help="rerank arm: fusion top-N window re-ranked by the cross-encoder "
+                             "(default 100, matching the official ToolRet second stage)")
     parser.add_argument("--limit", type=int, default=None,
                         help="cap evaluated cases (sampled, pool untouched); default all")
     parser.add_argument("--k", type=int, nargs="+", default=(5, 10),
@@ -212,6 +323,33 @@ def main() -> int:
     arms: dict[str, ArmResult] = {}
     fusion_config: EmbeddingConfig | None = None
     cached: CachedEmbedder | None = None
+    reranker: ApiReranker | None = None
+    reranker_model: str | None = None
+    if args.arm == "rerank":
+        config = embedder_from_env()
+        if vector_available(config) != "api":
+            print("[rerank] the rerank arm retrieves via fusion first — set "
+                  "AGENT_RETRIEVAL_EMBEDDING_API_KEY too.", file=sys.stderr)
+            return 2
+        fusion_config = config
+        embedder = build_embedder(config)
+        assert embedder is not None  # vector_available said "api"
+        cached = CachedEmbedder(
+            embedder,
+            db_path=_DEFAULT_CACHE_PATH,
+            identity=f"{config.provider}:{config.model_name}:{config.dimensions}",
+        )
+        reranker = reranker_from_env()
+        reranker_model = os.environ.get("AGENT_RETRIEVAL_RERANK_MODEL", "BAAI/bge-reranker-v2-m3")
+        try:
+            reranker.rerank("benchmark preflight", ["alpha document", "beta document"])
+        except RerankError as exc:
+            print(f"[rerank] preflight failed — fix the rerank config: {exc}", file=sys.stderr)
+            return 2
+        arms["rerank"] = run_rerank_arm(
+            dataset, k_values, embedder=cached, reranker=reranker,
+            candidates=args.rerank_candidates, label="rerank", query_mode=args.query_mode,
+        )
     if args.arm in ("fusion", "both"):
         config = embedder_from_env()
         if vector_available(config) != "api":
@@ -267,6 +405,8 @@ def main() -> int:
             "k_values": list(k_values),
             "query_mode": args.query_mode,
             "embedder": fusion_config.identity() if fusion_config else None,
+            "reranker": reranker_model,
+            "rerank_candidates": args.rerank_candidates if args.arm == "rerank" else None,
             "vector_cache": bool(cached),
             "vectors_embedded_this_run": cached.embedded_texts if cached else None,
         },
@@ -302,6 +442,9 @@ def _print_summary(
 ) -> None:
     print(f"\n=== {dataset_name} @ {revision}: {resources} resources × {cases} cases ===")
     print(f"embedder: {embedder_identity or 'none (BM25-only run)'}")
+    if arms and "rerank" in arms:
+        print(f"reranker: {os.environ.get('AGENT_RETRIEVAL_RERANK_MODEL', 'BAAI/bge-reranker-v2-m3')} "
+              f"(top-{os.environ.get('AGENT_RETRIEVAL_RERANK_CANDIDATES', '100')} window)")
     for arm_name, arm in arms.items():
         cells = "  ".join(f"{name}={value:.4f}" for name, value in arm.metrics.items())
         print(f"[{arm_name}] ({arm.cases} cases, {arm.elapsed_seconds}s)  {cells}")

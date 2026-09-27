@@ -16,3 +16,6 @@ experiments/benchmarks/.cache/
 # Benchmark reports (regenerable via the runners; datasets/caches already ignored)
 experiments/*-benchmark*.json
 experiments/*-smoke.json
+# Jev rerank reports (regenerable via experiments.benchmarks.jev_rerank)
+experiments/jev-rerank-*.json
+experiments/jev-rerank-run.log
