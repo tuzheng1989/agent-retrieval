@@ -112,3 +112,38 @@ reporting silently shuffled rankings.
 
 Reports: `jev-rerank-skillret-300-w{20,50}.json` and
 `toolret-benchmark-rerank.json` (gitignored).
+
+## Recall-ceiling panorama and two falsified recall fixes (2026-09-28/29)
+
+Recall is the binding constraint of the whole pipeline. Gold-in-window coverage
+over the full pools (fusion, ToolRet in instruction mode):
+
+| gold in window | @5 | @10 | @20 | @50 |
+| --- | ---: | ---: | ---: | ---: |
+| SkillRet (6,006 pool) | 63.4% | 69.8% | 73.5% | 79.9% |
+| ToolRet (44,453 pool) | 35.3% | 39.8% | 48.6% | 59.1% |
+
+Two recall improvements were implemented and **falsified** by their own
+ablations — reports under `recall-ablation-*.json` / `iterative-*.json`
+(gitignored):
+
+1. **Field-level multi-path BM25** (name/description/tags as separate paths,
+   RRF-merged) degraded SkillRet across the board: BM25-arm Recall@5 fell
+   0.459 → 0.308, MRR 0.563 → 0.395 (300 queries). Unweighted RRF lets a
+   narrow field's accidental single hit take that path's top slot (1/61) and
+   crowd out candidates accumulated by multi-word description hits. SkillRet's
+   paper reports field-separation winning under *learned weighted* fusion —
+   that advantage does not transfer to unweighted RRF.
+2. **Jev-triggered iterative retrieval** (PRF-expanded second round when the
+   window's best Jev probability < τ): trigger rate was **0% across
+   τ ∈ {0.3, 0.5, 0.7} on both benchmarks** (SkillRet 30, ToolRet 30). Jev's
+   question ("can some resource here perform a step of the task?") is almost
+   always answerable by *some* partially-related candidate in a fusion top-20,
+   so its confidence never signals the failure mode that matters (gold absent
+   from the window). A trigger for this purpose needs a different question.
+
+What the panorama says instead: on ToolRet, 41% of gold is outside even the
+top-50 window — the lever is first-stage coverage (a purpose-built or
+higher-capacity embedder, doc2query-style corpus expansion), not re-ranking or
+iterating over a weak window. On SkillRet the ceiling at top-50 is 79.9% and
+Jev already captures most of the re-orderable gap within window 20.

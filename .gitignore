@@ -19,3 +19,7 @@ experiments/*-smoke.json
 # Jev rerank reports (regenerable via experiments.benchmarks.jev_rerank)
 experiments/jev-rerank-*.json
 experiments/jev-rerank-run.log
+# Recall ablation reports (regenerable via --retriever fields)
+experiments/recall-ablation-*.json
+# Iterative retrieval reports
+experiments/iterative-*.json

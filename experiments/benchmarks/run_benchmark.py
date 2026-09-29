@@ -39,10 +39,12 @@ flatter every arm.
 from __future__ import annotations
 
 import argparse
+import gc
 import json
 import os
 import sys
 import time
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from time import perf_counter
@@ -57,9 +59,10 @@ from agent_retrieval import (
 )
 
 from experiments.benchmarks import skillret, toolret
-from experiments.benchmarks.dataset import BenchmarkDataset, Case
+from experiments.benchmarks.dataset import BenchmarkDataset, Case, Resource
 from experiments.benchmarks.embedder_cache import CachedEmbedder
 from experiments.benchmarks.metrics import aggregate, score_case
+from experiments.benchmarks.multipath import FieldRetriever
 from experiments.benchmarks.reranker import (
     RERANK_DOC_FLOOR_CHARS,
     RERANK_PAIR_BUDGET_CHARS,
@@ -249,6 +252,25 @@ def run_rerank_arm(
     )
 
 
+def field_paths(dataset: BenchmarkDataset) -> list[tuple[str, Callable[[Resource], str]]]:
+    """Per-field projections of the declared face, one BM25 path each.
+
+    SkillRet's paper reports field-separate beats concatenated hybrid retrieval;
+    ToolRet's documentation is heterogeneous JSON, so only the parsed tool name
+    gets its own path and everything else stays on the verbatim path.
+    """
+    if dataset.name == "skillret":
+        return [
+            ("name", lambda resource: resource.name),
+            ("description", lambda resource: resource.description),
+            ("tags", lambda resource: resource.tags),
+        ]
+    return [
+        ("name", lambda resource: resource.name),
+        ("documentation", lambda resource: resource.description),
+    ]
+
+
 def run_arm(
     dataset: BenchmarkDataset,
     k_values: tuple[int, ...],
@@ -256,21 +278,34 @@ def run_arm(
     embedder: Embedder | None = None,
     label: str,
     query_mode: str = "query",
+    retriever: str = "single",
+    field_retriever: FieldRetriever | None = None,
 ) -> ArmResult:
     """Rank every case once and aggregate per-case metrics; full-recall rankings."""
     rows: list[dict[str, float]] = []
     started = perf_counter()
     for index, case in enumerate(dataset.cases):
-        hits = rank_candidates(
-            dataset.resources,
-            case_query_text(case, query_mode),
-            corpus_text=dataset.corpus_text,
-            item_id=lambda resource: resource.id,
-            item_name=lambda resource: resource.name,
-            vector=embedder,
-        )
-        ranked = [hit.item.id for hit in hits]
+        query = case_query_text(case, query_mode)
+        if retriever == "fields":
+            if field_retriever is None:
+                raise ValueError("fields retriever needs a prebuilt FieldRetriever")
+            ranked = field_retriever.rank(query, embedder=embedder,
+                                          corpus_text=dataset.corpus_text)
+        else:
+            hits = rank_candidates(
+                dataset.resources,
+                query,
+                corpus_text=dataset.corpus_text,
+                item_id=lambda resource: resource.id,
+                item_name=lambda resource: resource.name,
+                vector=embedder,
+            )
+            ranked = [hit.item.id for hit in hits]
         rows.append(score_case(ranked, case.golds, k_values))
+        if (index + 1) % 25 == 0:
+            # 全池无状态检索每次调用重建 44k 文档索引，临时对象量大且分代
+            # GC 回收不及时——周期性强制回收压住内存峰值（OOM 杀任务的教训）。
+            gc.collect()
         if (index + 1) % 100 == 0:
             print(f"[{label}] {index + 1}/{len(dataset.cases)} cases ranked", file=sys.stderr)
     return ArmResult(
@@ -296,6 +331,9 @@ def main() -> int:
     parser.add_argument("--query-mode", choices=("query", "instruction"), default="query",
                         help="instruction mode prepends the task-aware instruction to each "
                              "query (ToolRet official main protocol, is_inst=True)")
+    parser.add_argument("--retriever", choices=("single", "fields"), default="single",
+                        help="fields mode splits the declared face into per-field BM25 "
+                             "paths merged by RRF (vector path unchanged)")
     parser.add_argument("--data-dir", type=Path, default=_DEFAULT_DATA_DIR,
                         help="dataset download directory (gitignored)")
     parser.add_argument("--no-cache", action="store_true",
@@ -325,6 +363,10 @@ def main() -> int:
     cached: CachedEmbedder | None = None
     reranker: ApiReranker | None = None
     reranker_model: str | None = None
+    field_retriever = (
+        FieldRetriever(dataset.resources, field_paths(dataset))
+        if args.retriever == "fields" else None
+    )
     if args.arm == "rerank":
         config = embedder_from_env()
         if vector_available(config) != "api":
@@ -381,7 +423,8 @@ def main() -> int:
                 config = replace(config, dimensions=len(probe))
             if args.no_cache:
                 arms["fusion"] = run_arm(dataset, k_values, embedder=embedder, label="fusion",
-                                         query_mode=args.query_mode)
+                                         query_mode=args.query_mode, retriever=args.retriever,
+                                         field_retriever=field_retriever)
             else:
                 cached = CachedEmbedder(
                     embedder,
@@ -389,10 +432,12 @@ def main() -> int:
                     identity=f"{config.provider}:{config.model_name}:{config.dimensions}",
                 )
                 arms["fusion"] = run_arm(dataset, k_values, embedder=cached, label="fusion",
-                                         query_mode=args.query_mode)
+                                         query_mode=args.query_mode, retriever=args.retriever,
+                                         field_retriever=field_retriever)
     if args.arm in ("bm25", "both"):
         arms["bm25"] = run_arm(dataset, k_values, embedder=None, label="bm25",
-                               query_mode=args.query_mode)
+                               query_mode=args.query_mode, retriever=args.retriever,
+                               field_retriever=field_retriever)
 
     result: dict[str, object] = {
         "dataset": {
@@ -404,6 +449,7 @@ def main() -> int:
         "configuration": {
             "k_values": list(k_values),
             "query_mode": args.query_mode,
+            "retriever": args.retriever,
             "embedder": fusion_config.identity() if fusion_config else None,
             "reranker": reranker_model,
             "rerank_candidates": args.rerank_candidates if args.arm == "rerank" else None,
