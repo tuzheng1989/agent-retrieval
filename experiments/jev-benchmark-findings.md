@@ -147,3 +147,33 @@ top-50 window — the lever is first-stage coverage (a purpose-built or
 higher-capacity embedder, doc2query-style corpus expansion), not re-ranking or
 iterating over a weak window. On SkillRet the ceiling at top-50 is 79.9% and
 Jev already captures most of the re-orderable gap within window 20.
+
+## doc2query corpus expansion works (2026-10-01)
+
+Following the panorama's pointer, `docgen.py` generated 5 realistic user queries
+per skill (`glm-5.3-flash` via Zhipu's coding endpoint, 6,006/6,006 resources,
+zero failures after switching off thinking tokens and budgeting 2,000
+max_tokens — GLM-4.5/5.3 reasoning tokens count against the budget and
+silently truncate the answer). Same 300-case prefix, same embedder, k up to 50:
+
+| Arm | Corpus | Recall@5 | Recall@20 | Recall@50 | MRR | NDCG@10 |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| BM25 | plain | 0.459 | 0.606 | 0.674 | 0.563 | 0.470 |
+| **BM25** | **docgen** | **0.695** | **0.803** | **0.851** | **0.793** | **0.695** |
+| Fusion | plain | 0.634 | 0.735 | 0.799 | 0.737 | 0.631 |
+| Fusion | docgen | 0.691 | 0.801 | **0.879** | 0.775 | 0.681 |
+
+**BM25 + docgen beats plain fusion** on every metric — the vocabulary bridge
+in the corpus replaces the vector path's semantic bridging at zero query-time
+cost. The recall ceiling itself moved: Recall@50 0.674 → 0.851. Fusion+docgen
+still holds the highest Recall@50 (0.879) but its MRR/NDCG trail BM25+docgen
+(vector and expansion overlap in benefit).
+
+Caveat: docgen queries and SkillRet's evaluation queries are both LLM-generated
+English questions; the same-distribution effect likely inflates the gain versus
+messier real users. Directionality (vocabulary bridging lifts recall) is solid;
+exact magnitudes are benchmark-specific. Reports:
+`recall-ablation-skillret-{single,fields,docgen}.json` (gitignored).
+Reproduce: `python -m experiments.benchmarks.docgen --bench skillret --k 5`
+then `python -m experiments.benchmarks.run_benchmark --bench skillret --limit
+300 --arm both --corpus docgen --k 5 10 20 50`.

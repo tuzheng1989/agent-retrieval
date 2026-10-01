@@ -60,6 +60,7 @@ from agent_retrieval import (
 
 from experiments.benchmarks import skillret, toolret
 from experiments.benchmarks.dataset import BenchmarkDataset, Case, Resource
+from experiments.benchmarks.docgen import docgen_corpus_text, load_docgen
 from experiments.benchmarks.embedder_cache import CachedEmbedder
 from experiments.benchmarks.metrics import aggregate, score_case
 from experiments.benchmarks.multipath import FieldRetriever
@@ -334,6 +335,10 @@ def main() -> int:
     parser.add_argument("--retriever", choices=("single", "fields"), default="single",
                         help="fields mode splits the declared face into per-field BM25 "
                              "paths merged by RRF (vector path unchanged)")
+    parser.add_argument("--corpus", choices=("plain", "docgen"), default="plain",
+                        help="docgen mode appends doc2query generated queries to each "
+                             "resource's retrieval corpus (needs experiments/benchmarks/"
+                             "data/docgen-{bench}.jsonl from the docgen CLI)")
     parser.add_argument("--data-dir", type=Path, default=_DEFAULT_DATA_DIR,
                         help="dataset download directory (gitignored)")
     parser.add_argument("--no-cache", action="store_true",
@@ -367,6 +372,19 @@ def main() -> int:
         FieldRetriever(dataset.resources, field_paths(dataset))
         if args.retriever == "fields" else None
     )
+    if args.corpus == "docgen":
+        expansions = load_docgen(_DEFAULT_DATA_DIR, args.bench)
+        dataset = BenchmarkDataset(
+            name=dataset.name,
+            revision=f"{dataset.revision}+docgen",
+            corpus_text=docgen_corpus_text(dataset.corpus_text, expansions),
+            resources=dataset.resources,
+            cases=dataset.cases,
+        )
+        covered = sum(1 for resource in dataset.resources
+                      if resource.id in expansions)
+        print(f"[corpus] docgen: {covered}/{len(dataset.resources)} resources expanded",
+              file=sys.stderr)
     if args.arm == "rerank":
         config = embedder_from_env()
         if vector_available(config) != "api":
@@ -450,6 +468,7 @@ def main() -> int:
             "k_values": list(k_values),
             "query_mode": args.query_mode,
             "retriever": args.retriever,
+            "corpus": args.corpus,
             "embedder": fusion_config.identity() if fusion_config else None,
             "reranker": reranker_model,
             "rerank_candidates": args.rerank_candidates if args.arm == "rerank" else None,
