@@ -19,6 +19,7 @@ from time import perf_counter
 from agent_retrieval import QueryEmbeddingError, build_embedder, rank_candidates, vector_available
 
 from experiments.benchmarks.dataset import Case, Resource
+from experiments.benchmarks.docgen import docgen_corpus_text, load_docgen
 from experiments.benchmarks.embedder_cache import CachedEmbedder
 from experiments.benchmarks.metrics import aggregate, score_case
 from experiments.benchmarks.run_benchmark import (
@@ -103,10 +104,22 @@ def _sample(dataset, limit: int):
     return [dataset.cases[(index * len(dataset.cases)) // limit] for index in range(limit)]
 
 
-def load_sampled_benchmark(name: str, data_dir: Path, limit: int):
+def load_sampled_benchmark(name: str, data_dir: Path, limit: int,
+                           corpus: str = "plain"):
     # SkillRet needs the full split in memory before sampling across it.
     # ToolRet limits during loading to retain its round-robin task sampling.
     dataset = load_benchmark(name, data_dir, None if name == "skillret" else limit)
+    if corpus == "docgen":
+        expansions = load_docgen(data_dir, name)
+        if not expansions:
+            raise ValueError(
+                f"no docgen expansions found for {name} — run the docgen CLI first",
+            )
+        dataset = replace(
+            dataset,
+            revision=f"{dataset.revision}+docgen",
+            corpus_text=docgen_corpus_text(dataset.corpus_text, expansions),
+        )
     return dataset, _sample(dataset, limit)
 
 
@@ -118,7 +131,8 @@ def run(args: argparse.Namespace) -> dict:
     if args.query_mode == "instruction" and args.bench != "toolret":
         raise ValueError("instruction query mode is ToolRet-only")
 
-    dataset, cases = load_sampled_benchmark(args.bench, args.data_dir, args.limit)
+    dataset, cases = load_sampled_benchmark(args.bench, args.data_dir, args.limit,
+                                            corpus=args.corpus)
     embedder = None
     cache = None
     embedder_identity = None
@@ -193,6 +207,7 @@ def run(args: argparse.Namespace) -> dict:
         "configuration": {
             "arm": args.arm,
             "query_mode": args.query_mode,
+            "corpus": args.corpus,
             "window": args.window,
             "k_values": list(k_values),
             "sampling": (
@@ -225,6 +240,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bench", choices=("toolret", "skillret"), required=True)
     parser.add_argument("--arm", choices=("bm25", "fusion"), default="fusion")
+    parser.add_argument("--corpus", choices=("plain", "docgen"), default="plain",
+                        help="docgen mode appends doc2query generated queries to each "
+                             "resource's retrieval corpus (docgen CLI output required)")
     parser.add_argument("--query-mode", choices=("query", "instruction"), default="query")
     parser.add_argument("--limit", type=int, default=20)
     parser.add_argument("--window", type=int, default=20)
