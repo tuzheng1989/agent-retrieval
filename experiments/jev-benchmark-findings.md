@@ -177,3 +177,35 @@ exact magnitudes are benchmark-specific. Reports:
 Reproduce: `python -m experiments.benchmarks.docgen --bench skillret --k 5`
 then `python -m experiments.benchmarks.run_benchmark --bench skillret --limit
 300 --arm both --corpus docgen --k 5 10 20 50`.
+
+## Full-combination matrix (2026-10-01): the optimum is docgen + BM25 + Jev@20
+
+All three docgen × Jev combinations ran on 300 spread cases (comparable to the
+full run above; note `run_benchmark`'s 300-case prefix and this spread differ —
+compare only within this table):
+
+| Final configuration | Recall@5 | Recall@10 | MRR | NDCG@5 | Extra cost |
+| --- | ---: | ---: | ---: | ---: | --- |
+| fusion (plain baseline) | 0.663 | 0.727 | 0.733 | 0.627 | — |
+| fusion + Jev@20 | 0.750 | 0.780 | 0.783 | 0.710 | ~1.7M tok |
+| **docgen + BM25 + Jev@20** | **0.763** | 0.794 | **0.789** | **0.718** | ~1.7M tok |
+| docgen + fusion (no Jev) | 0.696 | 0.761 | **0.805** | 0.687 | none |
+| docgen + fusion + Jev@50 | **0.769** | **0.834** | 0.774 | 0.711 | ~3.5M tok |
+
+Three findings:
+
+1. **The all-round winner is docgen + BM25 + Jev@20** — best or joint-best on
+   all four metrics *and* it needs no embedding infrastructure at all.
+2. **After docgen, adding Jev to fusion *lowers* MRR** (0.805 bare → 0.781/0.774
+   with Jev@20/@50) even though recall still rises: docgen already fixes the
+   vocabulary gap, fusion's top-1 hit rate jumps, and Jev's occasional
+   misjudgment now drags down an ordering that was mostly right. Jev pays for
+   itself where retrieval is *weak* (the plain-corpus case above), not on top
+   of a strong one.
+3. **Window 50 becomes worth it under docgen** (gold-in-window 0.793 → 0.868):
+   Recall@10 = 0.834 is the best window coverage measured, at 2× token cost and
+   slightly softer ordering.
+
+Recommendation by objective: default **docgen + BM25 + Jev@20**; latency-bound
+**docgen + BM25** (no Jev: Recall@5 0.724, MRR 0.793, zero per-query calls);
+coverage-bound **docgen + fusion + Jev@50** (Recall@10 0.834).
