@@ -45,6 +45,15 @@ def oracle_window(ranked: list[str], golds: frozenset[str], window: int) -> list
     return sorted(ranked[:window], key=lambda item_id: item_id not in golds) + ranked[window:]
 
 
+#: Per-candidate description cap in the Jev state. ToolRet's ``description`` is
+#: the raw documentation JSON (long tail to ~14k chars); a 20-candidate window
+#: of those blows System One's input budget (HTTP 400 ``max_tokens_exceeded``).
+#: 2,000 chars per candidate keeps a 20-window near ~10k tokens — under the
+#: ~12k the SkillRet w50 run already proved the endpoint accepts. SkillRet
+#: descriptions are 10–2.3k chars, so only a tiny tail gets clipped there.
+JEV_DESCRIPTION_MAX_CHARS = 2000
+
+
 def jev_scores(case: Case, resources: list[Resource], *, bench: str) -> tuple[dict[str, float], dict]:
     from typesafe_sdk import Noul, TypeSafeClient
 
@@ -54,7 +63,7 @@ def jev_scores(case: Case, resources: list[Resource], *, bench: str) -> tuple[di
         "candidates": {
             f"c{index}": {
                 "name": resource.name,
-                "description": resource.description,
+                "description": resource.description[:JEV_DESCRIPTION_MAX_CHARS],
                 "tags": resource.tags,
             }
             for index, resource in enumerate(resources)

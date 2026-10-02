@@ -35,8 +35,10 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from threading import Lock
+from typing import TypeVar
 
 _DATA_DIR = Path(__file__).with_name("data")
+_ResourceT = TypeVar("_ResourceT")
 
 
 class DocGenError(RuntimeError):
@@ -166,8 +168,8 @@ def load_docgen(data_dir: Path, bench: str) -> dict[str, list[str]]:
     return loaded
 
 
-def docgen_corpus_text(base_corpus_text: Callable[[object], str],
-                       expansions: dict[str, list[str]]) -> Callable[[object], str]:
+def docgen_corpus_text(base_corpus_text: Callable[[_ResourceT], str],
+                       expansions: dict[str, list[str]]) -> Callable[[_ResourceT], str]:
     """Wrap a corpus projection so expansion queries ride on the retrieval face.
 
     Resources without generated queries fall back to the base projection —
