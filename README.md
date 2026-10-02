@@ -144,6 +144,11 @@ The package never reads environment variables, config files, or your ContextVars
 
 ## Quality benchmarks
 
+A configuration-selection guide distilled from these ablations — three laws,
+a decision table, and a validation workflow for picking docgen / vector-path /
+Jev-rerank / window per domain — lives in
+[docs/retrieval-config-guide.md](docs/retrieval-config-guide.md).
+
 Retrieval quality (kernel + embedder) is evaluated against two public benchmarks —
 [ToolRet](https://arxiv.org/abs/2503.01763) (tool retrieval, ~43k tools) and
 [SkillRet](https://arxiv.org/abs/2605.05726) (agent-skill retrieval, 6,006-skill
