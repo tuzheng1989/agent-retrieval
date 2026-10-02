@@ -209,3 +209,38 @@ Three findings:
 Recommendation by objective: default **docgen + BM25 + Jev@20**; latency-bound
 **docgen + BM25** (no Jev: Recall@5 0.724, MRR 0.793, zero per-query calls);
 coverage-bound **docgen + fusion + Jev@50** (Recall@10 0.834).
+
+## ToolRet: docgen + Jev validation (2026-10-02)
+
+ToolRet (44,453 pool, 100 instruction-mode round-robin queries) ran the same
+ladder with doc2query expansion over the documentation-verbatim corpus
+(44,444/44,453 resources expanded; 9 pathological documents skipped):
+
+| Configuration | Recall@5 | Recall@10 | Recall@20 | Recall@50 | MRR | NDCG@10 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| BM25 plain | 0.317 | 0.362 | 0.435 | 0.486 | 0.336 | 0.303 |
+| BM25 docgen | 0.329 | 0.388 | 0.439 | 0.528 | 0.362 | 0.319 |
+| Fusion plain | 0.353 | 0.398 | 0.486 | **0.591** | 0.372 | 0.339 |
+| Fusion docgen | 0.381 | 0.427 | 0.486 | 0.574 | 0.353 | 0.326 |
+| BM25 docgen + Jev@20 | 0.408 | 0.433 | — | — | 0.400 | 0.366 |
+| **Fusion docgen + Jev@20** | **0.424** | **0.468** | — | — | **0.414** | **0.388** |
+
+Findings — the mirror image of SkillRet, and a unified rule:
+
+- docgen lifts ToolRet only modestly (BM25 Recall@5 +3.8%, Fusion +8.0%), and
+  Fusion Recall@50 slightly *drops* (0.591 → 0.574): expansion noise pushes
+  some long-tail gold out of deep positions. ToolRet's documentation JSON is
+  already vocabulary-rich, so the colloquial bridge adds less.
+- Jev strongly complements the weaker ToolRet retrievals: +24% Recall@5 on
+  BM25, +11% on Fusion, +17% MRR on Fusion. **Jev's gain scales with retrieval
+  weakness** — docgen made SkillRet retrieval strong enough that Jev's marginal
+  turned negative; ToolRet retrieval stays weak, so Jev pays.
+- Unlike SkillRet, the vector path stays essential on ToolRet: docgen+Fusion
+  beats docgen+BM25 by +16% Recall@5 (parameter semantics in the documentation
+  JSON are not covered by colloquial generated queries).
+
+Best ToolRet configuration: **fusion docgen + Jev@20** (Recall@5 0.424,
+NDCG@10 0.388) — numerically above the official leaderboard's best published
+NDCG@10 (NV-Embed-v1, 0.338; different-embedder caveat applies). Reports:
+`jev-toolret-docgen-{bm25,fusion}-w20.json`, `recall-ablation-toolret-{bm25,fusion}.json`,
+`recall-ablation-toolret-docgen.json` (gitignored).
