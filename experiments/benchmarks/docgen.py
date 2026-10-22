@@ -84,6 +84,68 @@ def parse_generated_queries(text: str, k: int) -> list[str]:
     return queries[:k]
 
 
+def _chat_completion(
+    prompt: str,
+    *,
+    base_url: str,
+    api_key: str,
+    model: str,
+    label: str,
+) -> str:
+    """One chat-completion call under the shared batch-generation discipline.
+
+    Discipline (all offline generators ride this): temperature 0.2, thinking
+    explicitly disabled (GLM-4.5/5.3 reasoning tokens count against max_tokens
+    and silently truncate the answer), 2,000-token budget, backoff retries for
+    everything except auth failures — gateways report transient rate limits as
+    plain 4xx (often not even 429), so any non-auth HTTP error retries.
+    Raises :class:`DocGenError` when retries are exhausted.
+    """
+    try:
+        import requests  # noqa: PLC0415 — 可选实验依赖，与 ApiEmbedder 同模式
+    except ImportError as exc:
+        raise DocGenError(f"{label} 缺依赖 requests；先 pip install requests") from exc
+    # 网关把瞬时限流/上游故障也报成 4xx（rerank 实测教训），除鉴权失败外都退避重试。
+    last_error: Exception | None = None
+    for attempt, pause in enumerate((0, 2.0, 5.0, 10.0)):
+        if pause:
+            time.sleep(pause)
+        try:
+            response = requests.post(
+                f"{base_url}/chat/completions",
+                headers={"Authorization": f"Bearer {api_key}"},
+                json={
+                    "model": model,
+                    "messages": [{"role": "user", "content": prompt}],
+                    "temperature": 0.2,
+                    # GLM-4.5 系是推理模型：thinking token 计入 max_tokens，会
+                    # 把 content 挤空（finish_reason=length）——显式关闭后稳定。
+                    "thinking": {"type": "disabled"},
+                    "max_tokens": 2000,
+                    "stream": False,
+                },
+                timeout=60,
+            )
+            if response.status_code in (401, 403):
+                raise DocGenError(
+                    f"{label} 鉴权失败 (HTTP {response.status_code})，不重试: {response.text[:120]}",
+                )
+            if response.status_code >= 400:
+                # 非 4xx 鉴权错误按瞬时故障处理：记入 last_error 进入退避重试，
+                # 而不是直接抛出（此前的实现让 4xx 也不重试，靠重跑兜底；
+                # 提炼共享函数时对齐注释声明的纪律，长批处理依赖它）。
+                last_error = DocGenError(f"HTTP {response.status_code}: {response.text[:200]}")
+                continue
+            return response.json()["choices"][0]["message"]["content"]
+        except DocGenError:
+            raise
+        except Exception as exc:
+            last_error = exc
+            if attempt == 3:
+                break
+    raise DocGenError(f"{label} 调用失败（已重试 3 次）: {last_error}")
+
+
 PROMPT_TEMPLATE = """You generate realistic user queries for a retrieval index.
 
 Resource:
@@ -108,49 +170,13 @@ def generate_queries(
     k: int = 5,
 ) -> list[str]:
     """One chat call → k distinct user queries for the resource."""
-    try:
-        import requests  # noqa: PLC0415 — 可选实验依赖，与 ApiEmbedder 同模式
-    except ImportError as exc:
-        raise DocGenError("docgen 缺依赖 requests；先 pip install requests") from exc
     prompt = PROMPT_TEMPLATE.format(
         name=resource_name, description=resource_description, tags=resource_tags, k=k,
     )
-    # 网关把瞬时限流/上游故障也报成 4xx（rerank 实测教训），除鉴权失败外都退避重试。
-    last_error: Exception | None = None
-    for attempt, pause in enumerate((0, 2.0, 5.0, 10.0)):
-        if pause:
-            time.sleep(pause)
-        try:
-            response = requests.post(
-                f"{base_url}/chat/completions",
-                headers={"Authorization": f"Bearer {api_key}"},
-                json={
-                    "model": model,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.2,
-                    # GLM-4.5 系是推理模型：thinking token 计入 max_tokens，会
-                    # 把 content 挤空（finish_reason=length）——显式关闭后稳定。
-                    "thinking": {"type": "disabled"},
-                    "max_tokens": 2000,
-                    "stream": False,
-                },
-                timeout=60,
-            )
-            if response.status_code in (401, 403):
-                raise DocGenError(
-                    f"docgen 鉴权失败 (HTTP {response.status_code})，不重试: {response.text[:120]}",
-                )
-            if response.status_code >= 400:
-                raise DocGenError(f"HTTP {response.status_code}: {response.text[:200]}")
-            content = response.json()["choices"][0]["message"]["content"]
-            return parse_generated_queries(content, k)
-        except DocGenError:
-            raise
-        except Exception as exc:
-            last_error = exc
-            if attempt == 3:
-                break
-    raise DocGenError(f"docgen 调用失败（已重试 3 次）: {last_error}")
+    content = _chat_completion(
+        prompt, base_url=base_url, api_key=api_key, model=model, label="docgen",
+    )
+    return parse_generated_queries(content, k)
 
 
 def load_docgen(data_dir: Path, bench: str) -> dict[str, list[str]]:

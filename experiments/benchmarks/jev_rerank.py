@@ -12,6 +12,7 @@ import argparse
 import json
 import os
 import sys
+from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
 from time import perf_counter
@@ -54,8 +55,18 @@ def oracle_window(ranked: list[str], golds: frozenset[str], window: int) -> list
 JEV_DESCRIPTION_MAX_CHARS = 2000
 
 
-def jev_scores(case: Case, resources: list[Resource], *, bench: str) -> tuple[dict[str, float], dict]:
+def jev_scores(
+    case: Case,
+    resources: list[Resource],
+    *,
+    bench: str,
+    desc_provider: Callable[[Resource], str] | None = None,
+) -> tuple[dict[str, float], dict]:
     from typesafe_sdk import Noul, TypeSafeClient
+
+    resolve_desc: Callable[[Resource], str] = desc_provider or (
+        lambda resource: resource.description[:JEV_DESCRIPTION_MAX_CHARS]
+    )
 
     state = {
         "task": case.query,
@@ -63,7 +74,7 @@ def jev_scores(case: Case, resources: list[Resource], *, bench: str) -> tuple[di
         "candidates": {
             f"c{index}": {
                 "name": resource.name,
-                "description": resource.description[:JEV_DESCRIPTION_MAX_CHARS],
+                "description": resolve_desc(resource),
                 "tags": resource.tags,
             }
             for index, resource in enumerate(resources)
@@ -132,6 +143,43 @@ def load_sampled_benchmark(name: str, data_dir: Path, limit: int,
     return dataset, _sample(dataset, limit)
 
 
+def state_desc_provider(
+    mode: str,
+    summary_file: Path | None,
+    matched_chars: int | None,
+) -> tuple[Callable[[Resource], str] | None, Callable[[list[Resource]], int] | None]:
+    """Build the state-description provider for ``--state-desc``.
+
+    Returns ``(provider, fallback_counter)``; ``(None, None)`` is the default
+    truncate-at-2,000 behavior. Summary mode falls back to the clip for
+    resources without a generated summary and *counts* the misses — a >5%
+    fallback rate would quietly turn the summary arm into the truncate arm.
+    """
+    if mode == "truncate":
+        return None, None
+    if mode == "truncate-matched":
+        if not matched_chars or matched_chars < 1:
+            raise ValueError("--state-desc truncate-matched needs a positive --matched-chars")
+        return (lambda resource: resource.description[:matched_chars]), None
+    if mode == "summary":
+        if summary_file is None:
+            raise ValueError("--state-desc summary needs --summary-file")
+        from experiments.benchmarks.summarize import load_summaries
+
+        summaries = load_summaries(summary_file)
+        if not summaries:
+            raise ValueError(f"no summaries loaded from {summary_file} — run summarize first")
+
+        def provider(resource: Resource) -> str:
+            return summaries.get(resource.id, resource.description[:JEV_DESCRIPTION_MAX_CHARS])
+
+        def fallback_counter(resources: list[Resource]) -> int:
+            return sum(1 for resource in resources if resource.id not in summaries)
+
+        return provider, fallback_counter
+    raise ValueError(f"unknown state-desc mode: {mode}")
+
+
 def run(args: argparse.Namespace) -> dict:
     if not os.environ.get("TYPESAFE_API_KEY"):
         raise RuntimeError("TYPESAFE_API_KEY is required")
@@ -139,6 +187,9 @@ def run(args: argparse.Namespace) -> dict:
         raise ValueError("--window must be at least the largest positive --k")
     if args.query_mode == "instruction" and args.bench != "toolret":
         raise ValueError("instruction query mode is ToolRet-only")
+    desc_provider, summary_fallback_counter = state_desc_provider(
+        args.state_desc, args.summary_file, args.matched_chars,
+    )
 
     dataset, cases = load_sampled_benchmark(args.bench, args.data_dir, args.limit,
                                             corpus=args.corpus)
@@ -167,6 +218,7 @@ def run(args: argparse.Namespace) -> dict:
     k_values = tuple(sorted(set(args.k)))
     rows: list[dict] = []
     by_id = {resource.id: resource for resource in dataset.resources}
+    missing_summary_fallbacks = 0
     started = perf_counter()
     try:
         for index, case in enumerate(cases, start=1):
@@ -182,7 +234,12 @@ def run(args: argparse.Namespace) -> dict:
             baseline = [hit.item.id for hit in hits]
             head = baseline[:args.window]
             if head:
-                scores, usage = jev_scores(case, [by_id[item_id] for item_id in head], bench=args.bench)
+                head_resources = [by_id[item_id] for item_id in head]
+                scores, usage = jev_scores(
+                    case, head_resources, bench=args.bench, desc_provider=desc_provider,
+                )
+                if summary_fallback_counter is not None:
+                    missing_summary_fallbacks += summary_fallback_counter(head_resources)
                 reranked = rerank_window(baseline, scores, args.window)
             else:
                 scores, usage, reranked = {}, None, baseline
@@ -203,6 +260,12 @@ def run(args: argparse.Namespace) -> dict:
     finally:
         if cache is not None:
             cache.close()
+    if args.state_desc == "summary" and missing_summary_fallbacks:
+        window_slots = sum(len(row["baseline_top"]) for row in rows)
+        fallback_rate = missing_summary_fallbacks / window_slots if window_slots else 0.0
+        if fallback_rate > 0.05:
+            print(f"[jev] WARNING: {fallback_rate:.1%} of window candidates had no "
+                  "summary and fell back to the truncate clip", file=sys.stderr)
 
     usage_rows = [row["usage"] for row in rows if row["usage"] is not None]
     return {
@@ -219,6 +282,10 @@ def run(args: argparse.Namespace) -> dict:
             "corpus": args.corpus,
             "window": args.window,
             "k_values": list(k_values),
+            "state_desc": args.state_desc,
+            "matched_chars": args.matched_chars if args.state_desc == "truncate-matched" else None,
+            "summary_file": str(args.summary_file) if args.summary_file else None,
+            "missing_summary_fallbacks": missing_summary_fallbacks,
             "sampling": (
                 "spread across pinned test split" if args.bench == "skillret"
                 else "round-robin source-task prefix"
@@ -253,6 +320,16 @@ def main() -> int:
                         help="docgen mode appends doc2query generated queries to each "
                              "resource's retrieval corpus (docgen CLI output required)")
     parser.add_argument("--query-mode", choices=("query", "instruction"), default="query")
+    parser.add_argument("--state-desc", choices=("truncate", "summary", "truncate-matched"),
+                        default="truncate",
+                        help="what each Jev-state candidate's description is: the 2,000-char "
+                             "clip (default), a generated summary from --summary-file, or "
+                             "the clip re-run at --matched-chars (length-matched control)")
+    parser.add_argument("--summary-file", type=Path, default=None,
+                        help="summarize CLI output jsonl (required with --state-desc summary)")
+    parser.add_argument("--matched-chars", type=int, default=None,
+                        help="clip length for --state-desc truncate-matched "
+                             "(use the summary arm's p50 length)")
     parser.add_argument("--limit", type=int, default=20)
     parser.add_argument("--window", type=int, default=20)
     parser.add_argument("--k", nargs="+", type=int, default=(5, 10))

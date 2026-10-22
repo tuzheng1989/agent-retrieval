@@ -50,3 +50,51 @@ def test_skillret_sampling_loads_full_split_before_spacing_cases(monkeypatch):
 
     assert calls == [("skillret", None)]
     assert [case.id for case in sampled] == ["0", "20", "40", "60", "80"]
+
+
+class TestStateDescProvider:
+    """The --state-desc arms: default truncate behavior must stay byte-identical."""
+
+    def test_truncate_mode_is_none_default(self):
+        from experiments.benchmarks.jev_rerank import state_desc_provider
+
+        provider, counter = state_desc_provider("truncate", None, None)
+        assert provider is None and counter is None
+
+    def test_truncate_matched_clips_at_requested_length(self):
+        from experiments.benchmarks.jev_rerank import state_desc_provider
+
+        provider, counter = state_desc_provider("truncate-matched", None, 1200)
+        resource = Resource("r", "n", "x" * 3000, "")
+        assert provider(resource) == "x" * 1200
+        assert counter is None
+
+    def test_truncate_matched_requires_positive_chars(self):
+        from experiments.benchmarks.jev_rerank import state_desc_provider
+
+        with pytest.raises(ValueError):
+            state_desc_provider("truncate-matched", None, 0)
+
+    def test_summary_mode_falls_back_and_counts_misses(self, tmp_path, monkeypatch):
+        import experiments.benchmarks.summarize as summarize_module
+        from experiments.benchmarks.jev_rerank import state_desc_provider
+
+        monkeypatch.setattr(
+            summarize_module, "load_summaries",
+            lambda path: {"covered": "summary text"},
+        )
+        provider, counter = state_desc_provider(
+            "summary", tmp_path / "summaries.jsonl", None,
+        )
+        hit = Resource("covered", "n", "raw", "")
+        miss = Resource("uncovered", "n", "y" * 3000, "")
+        assert provider(hit) == "summary text"
+        # Uncovered candidates fall back to the incumbent clip, never empty.
+        assert provider(miss) == "y" * 2000
+        assert counter([hit, miss]) == 1
+
+    def test_summary_mode_requires_file(self):
+        from experiments.benchmarks.jev_rerank import state_desc_provider
+
+        with pytest.raises(ValueError):
+            state_desc_provider("summary", None, None)

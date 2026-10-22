@@ -23,3 +23,5 @@ experiments/jev-rerank-run.log
 experiments/recall-ablation-*.json
 # Iterative retrieval reports
 experiments/iterative-*.json
+# Two-tier retrieval ablation reports (regenerable via experiments.benchmarks.two_tier)
+experiments/two-tier-*.json

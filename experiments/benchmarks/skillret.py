@@ -23,7 +23,10 @@ from experiments.benchmarks.dataset import BenchmarkDataset, Case, Resource
 #: Dataset revision pinned for reproducibility (mutable-head caveat in the card).
 SKILLRET_REVISION = "a050ad2"
 _BASE = f"https://huggingface.co/datasets/ThakiCloud/SKILLRET/resolve/{SKILLRET_REVISION}"
-_SKILLS_FILE = "data/skills/test.jsonl"
+#: Public so the two-tier runner can re-read raw skill rows for grouping keys
+#: (``Resource.tags`` concatenates six fields with spaces — sub values contain
+#: spaces too, so the grouping key is not recoverable from the projection).
+SKILLS_FILE = "data/skills/test.jsonl"
 _QUERIES_FILE = "data/queries/test.jsonl"
 _QRELS_FILE = "data/qrels/test.jsonl"
 
@@ -31,7 +34,7 @@ _QRELS_FILE = "data/qrels/test.jsonl"
 def download(data_dir: Path) -> None:
     """Fetch the three test-split files once; existing files are kept as-is."""
     data_dir.mkdir(parents=True, exist_ok=True)
-    for remote in (_SKILLS_FILE, _QUERIES_FILE, _QRELS_FILE):
+    for remote in (SKILLS_FILE, _QUERIES_FILE, _QRELS_FILE):
         target = data_dir / remote.replace("/", "_")
         if target.exists() and target.stat().st_size > 0:
             continue
@@ -45,7 +48,7 @@ def download(data_dir: Path) -> None:
 
 def load(data_dir: Path) -> BenchmarkDataset:
     """Load the evaluation pool and labeled queries from downloaded files."""
-    skills_path = data_dir / _SKILLS_FILE.replace("/", "_")
+    skills_path = data_dir / SKILLS_FILE.replace("/", "_")
     queries_path = data_dir / _QUERIES_FILE.replace("/", "_")
     qrels_path = data_dir / _QRELS_FILE.replace("/", "_")
     missing = [path.name for path in (skills_path, queries_path, qrels_path) if not path.exists()]
