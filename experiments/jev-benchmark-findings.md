@@ -244,3 +244,88 @@ NDCG@10 0.388) — numerically above the official leaderboard's best published
 NDCG@10 (NV-Embed-v1, 0.338; different-embedder caveat applies). Reports:
 `jev-toolret-docgen-{bm25,fusion}-w20.json`, `recall-ablation-toolret-{bm25,fusion}.json`,
 `recall-ablation-toolret-docgen.json` (gitignored).
+
+## Two-tier retrieval (OpenViking scope-before-rank): falsified on SkillRet (2026-10-22)
+
+Borrowed from OpenViking's directory-aware retrieval: groups (18 `sub` categories)
+become first-class candidates; the first `rank_candidates` call ranks groups, the
+top-G groups' members are pooled, and a second call ranks resources in that pool.
+The kernel is untouched — tier two is "pass the subset and call again". Paired
+300-case spread sample, BM25 stack, plain corpus; pre-registered M1 (semantic
+two-tier vs single tier in the same runner) and M2 (semantic vs seeded random
+groups with the same size profile, isolating the pool-shrinkage side effect).
+Single-tier rows are bitwise-identical across M1/M2 runs; case sets match.
+
+| Comparison | ΔMRR | Δrecall@10 | Δrecall@20 | reading |
+| --- | ---: | ---: | ---: | --- |
+| two-tier − single (total) | −0.138 [−0.180, −0.099] | −0.159 [−0.202, −0.118] | −0.197 [−0.241, −0.155] | fails: recall CI upper < 0 |
+| two-tier − random two-tier (net) | **+0.119 [+0.072, +0.165]** | +0.152 [+0.100, +0.204] | +0.161 [+0.109, +0.214] | the structural prior is real |
+
+Mechanism: the first tier's entry loss dominates everything. Group hit rate
+(`p_any`, ≥1 gold group among top-G=3) is 0.743 — 3× its 0.241 chance baseline,
+so the tier-1 signal is genuine — but the 25.7% of cases whose gold group missed
+lose their recall entirely, and no second-tier ranking gain can buy that back.
+Stratified: single-gold-group cases (n=165) miss their *only* group 36.4% of the
+time (name-concatenation surfaces dilute against 6k-char group texts); cross-group
+cases (n=135, 45% of the sample) hit any group easily (0.87+) but `p_all` collapses
+to 0.29/0.05 — G=3 structurally caps their completeness.
+
+Sensitivity arms (300 spread cases, same single-tier baseline):
+
+| Arm | MRR | R@50 | `p_any` | tier-2 pool |
+| --- | ---: | ---: | ---: | ---: |
+| single (plain) | 0.554 | 0.685 | — | 6,006 |
+| sub G2 names | 0.358 | 0.398 | 0.623 | 1,267 |
+| sub G3 names (M1) | 0.416 | 0.478 | 0.743 | 1,811 |
+| sub G5 names | 0.464 | 0.571 | 0.843 | 2,692 |
+| sub G10 names | 0.528 | 0.653 | 0.953 | 4,363 |
+| domain G3 names | 0.391 | 0.508 | 0.773 | 1,697 |
+| sub G3 **llm** | 0.208 | 0.237 | 0.417 | 910 |
+| single (docgen) | 0.786 | 0.866 | — | 6,006 |
+| sub G3 names, docgen tier-2 | 0.592 | 0.563 | 0.743 | 1,811 |
+
+Three sensitivity findings. (1) The G curve is cleanly monotone (G2→G10 climbs
+0.358→0.528 MRR as `p_any` climbs 0.623→0.953) and G10 — where 4.7% entry loss
+remains — still trails single tier: the mechanism story is internally consistent,
+and even a near-perfect first tier cannot beat ranking over the full pool.
+(2) The **llm surface collapses** (`p_any` 0.417 vs 0.743): one generated
+use-when sentence per group has less inter-group lexical discrimination than
+member-name concatenation, and OpenViking's L0-abstract idea presupposes
+semantically coherent directories — SkillRet's `sub` labels are post-hoc
+clusters of up to 1,416 heterogeneous skills, so no short description represents
+them. A generated group description is only as good as the group's cohesion.
+(3) The apparent docgen "win" (0.592 > 0.554) is a cross-corpus artifact; paired
+against single-tier **docgen** — the correct comparison — two-tier loses
+ΔMRR −0.194 [−0.24, −0.15], Δrecall@50 −0.303 [−0.35, −0.26]. docgen strengthens
+tier two, which makes the fixed entry loss *relatively* more expensive: two-tier
+strictly trails same-corpus single tier under every corpus × surface × G tried.
+
+Verdict: the net structural signal (+0.12 MRR over random) is smaller than the
+entry loss (−0.26 vs single). **Scope-before-rank needs either a near-perfect
+first tier or gold that lives in one group; SkillRet has neither.** A caller with
+hierarchic data should treat the first tier as a *hint source* (e.g. boost chosen
+groups' members) rather than a hard filter.
+Reports: `two-tier-skillret-{sub,random,domain}-G{2,3,5,10}-*.json` (gitignored).
+Reproduce: `python -m experiments.benchmarks.two_tier --groupby sub --g 3
+--surface names --corpus plain --limit 300 --output ...` then
+`python -m experiments.benchmarks.ablation_stats pair --a <m1> --arm-a two_tier
+--b <m1> --arm-b single`.
+
+## Summary-instead-of-clip for the Jev state: premise fails (2026-10-22)
+
+Second OpenViking borrow: replace the 2,000-char description clip in the Jev
+state with an offline LLM summary (OpenViking's L1 overview idea), on the theory
+that clipping mid-JSON discards exactly the declared-capability evidence Jev
+judges. Pre-registered stop gate: measure the truncation rate over the actual
+windows first; <20% clipped → the intervention has nothing to bite on.
+
+Measured over the 100-case fusion docgen w20 windows (1,682 unique resources):
+**2.6% clipped (44 resources)** — and the window's median description is 542
+chars, *shorter than the 800–1,500-char summary target*. The clip almost never
+bites on the current best stack, and a summary would lengthen 97% of inputs.
+All 44 clips do land mid-JSON (splitting the documentation), so on a domain with
+longer documents the motivation would stand — but here the premise gate stops the
+experiment before ~1,600 generation calls and a 3-arm Jev comparison. Runner
+support (`--state-desc {truncate,summary,truncate-matched}` with a
+length-matched control arm) is in place and tested for the day a longer-document
+domain shows up. Report: `summarize --measure-only` (see the tool's output).
