@@ -1,0 +1,378 @@
+{
+  "schema_version": 1,
+  "plan_id": "bdebe7cd600941b585d5df43ef1e6219",
+  "task": "Design a lobby screen for ShieldBattery that displays while players are waiting for a match to start — it should show each player's race selection, their MMR badge, a real-time countdown timer, and a map preview with spawn locations highlighted. I want the layout to feel bold and confident, not like a generic loading screen — think strong typography, dramatic use of negative space, and maybe some subtle animated accents that reinforce the competitive atmosphere without being distracting. Can you build this out as a React component using the existing design system tokens?",
+  "hints": {
+    "experiment": "Select exactly ONE most suitable skill from the supplied menu, read it, then use its guidance to answer the task. This is a skill selection/application experiment, not a request to run external tools.",
+    "flow_id": "skillret-q-00002",
+    "flow_shape": "Exactly TWO required steps: load_skill (transform, operation = your chosen skill resource) -> apply_skill (llm, model = skillret-live-model version 1.0.0). One next transition only. Do not add other steps or resources.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "additionalProperties": false
+    },
+    "load_skill": "inputs must be {}. output_schema is a closed object with exactly skill_id, skill_name, skill_description, skill_body (all strings, all required). These are returned by the chosen operation. Do not invent a skill id in literal inputs.",
+    "apply_skill": "Bind inputs query to flow_input /query, skill_body to load_skill /skill_body, skill_name to load_skill /skill_name. Prompt MUST use ALL THREE placeholders {{query}}, {{skill_body}}, {{skill_name}}, demand a JSON object {answer: string}, and request a concise useful answer (at most about 600 words). Treat the skill text as task guidance; do not claim any external actions were executed. output_schema closed object, exactly answer (string, required).",
+    "output_schema": {
+      "type": "object",
+      "properties": {
+        "skill_id": {
+          "type": "string"
+        },
+        "skill_name": {
+          "type": "string"
+        },
+        "answer": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "skill_id",
+        "skill_name",
+        "answer"
+      ],
+      "additionalProperties": false
+    },
+    "outputs": "Bind skill_id and skill_name from load_skill; bind answer from apply_skill. All object schemas use additionalProperties:false and required listing every property. Emit raw YAML only, no prose or fences."
+  },
+  "model": {
+    "kind": "model",
+    "id": "skillret-live-model",
+    "version": "1.0.0",
+    "implementation": "models.json:skillret-e2e/glm-5.3-flash:2026-10-24",
+    "source": "snapshot"
+  },
+  "prompt": [
+    {
+      "role": "system",
+      "content": "你是 Rhetra Flow 规划器。根据任务描述与可用资源菜单，输出一条可在给定资源快照上执行的 FlowDefinition。全部回复必须是单个原始 YAML 文档：第一行直接以 schema_version 开始，禁止 Markdown 代码围栏、注释、解释或任何其他文本；JSON 兼容子集（禁止锚点/别名/重复键/自定义 tag/集合）。\n\n结构约束（逐条强制）：\n1. 顶层字段：schema_version=1、flow_id（kebab-case）、flow_version（SemVer，如 1.0.0）、description、input_schema、output_schema、entry、steps、transitions、outputs。顶层 output_schema 为必填字段（与 outputs 同级，声明最终结果的结构），遗漏它是最常见错误。\n2. entry 与每个 step 的 id 必须匹配 ^[a-z0-9]+(_[a-z0-9]+)*$（snake_case）。\n3. 每个 step 必须有 type 字段，取值只能是 llm、tool、transform 三者之一；选择器字段随 type 定：type=llm 用 model、type=tool 用 tool、type=transform 用 operation；选择器值引用菜单中的资源 id 与版本约束，如 {id: <菜单id>, version: <菜单version>}。\n4. 每个 step 必须有 description（非空字符串）、required（true/false）、inputs（每项形如 {ref: flow_input, path: /路径} 或 {ref: step_output, step: <步id>, path: /路径} 或字面量 {value: ...}或互斥分支取值 {one_of: [{ref: step_output, step: <步id>, path: /路径}, ...]}——命中任一可解析来源即取该值）、output_schema（JSON Schema 对象）。\n5. transitions 每个 {type: next|fork|join|merge|switch, id, from, to...}；串行用 next；fork 的 to 是数组；join 的 from 是数组且 fork 字段指回 fork id。transitions 至少 1 条：任务再简单也要拆成两步（如 提取 → 组装输出）用 next 串联，不允许零 transition 的 Flow。\n6. outputs：每项形如 {ref: step_output, step: <步id>, path: /路径}。顶层 outputs 不得用普通引用取 switch 分支臂内的 step（它在未选中的臂上会被跳过，导致输出无法解析）；需要臂内结果时用 one_of 逐臂列出，或先经 merge 汇出到臂外 step 再引用该臂外 step。\n7. 顶层 input_schema/output_schema 与每个 step 的 output_schema 的根必须是封闭对象：type: object 加 additionalProperties: false 加 required 数组列出全部属性名。\n8. type=llm 的 prompt 消息文本用双花括号占位符 {{名字}}（连续两个花括号，不是单个）引用输入，占位符名必须与该步 inputs 声明的输入名逐一对应；不得出现未声明的占位符；宁缺勿滥——只声明 prompt 中实际以 {{名字}} 引用的输入，声明了却未引用即违规。\n9. 位于 switch 分支臂内的 step 必须用 required: false（未选中的臂会被合法跳过，required: true 会因可被成功路径绕过而不合法）；不要从某一分支臂内的 step 向臂外 step 建立绑定，臂外 step 的 inputs 也不得用普通引用取臂内 step（两个方向都禁止）；臂外步骤要读臂内结果，唯一合法形式是 one_of 逐臂列出，或经 merge 汇出后引用臂外 step。\n10. 互斥合流 merge 的 from 必须一一覆盖其 switch 的全部 case 目标与 default 目标，不得遗漏任何一臂；switch 与 merge 必须配对使用。\n\n骨架示例（字段名与形态必须严格一致；尖括号占位换成菜单中真实存在的 id/version）：\nschema_version: 1\nflow_id: example-flow\nflow_version: 1.0.0\ndescription: 示例\ninput_schema: {type: object}\noutput_schema: {type: object, additionalProperties: false, required: [result]}\nentry: step_one\nsteps:\n  - id: step_one\n    type: transform\n    description: 提取\n    required: true\n    inputs: {incident: {ref: flow_input, path: /incident}}\n    output_schema: {type: object}\n    operation: {id: <菜单operation的id>, version: <其version>}\n  - id: step_two\n    type: tool\n    description: 查询\n    required: true\n    inputs: {city: {ref: step_output, step: step_one, path: /city}}\n    output_schema: {type: object}\n    tool: {id: <菜单tool的id>, version: <其version>}\n  - id: step_three\n    type: llm\n    description: 生成建议\n    required: true\n    inputs: {facts: {ref: step_output, step: step_two, path: /facts}}\n    output_schema: {type: object}\n    model: {id: <菜单中 kind=model 的 id>, version: <其version>}\n    prompt:\n      - role: system\n        content: 你是规划助手。\n      - role: user\n        content: 基于事实 {{facts}} 给出建议。\ntransitions:\n  - {type: next, id: t1, from: step_one, to: step_two}\n  - {type: next, id: t2, from: step_two, to: step_three}\noutputs: {result: {ref: step_output, step: step_three, path: /result}}\n\n如需条件分支，完整范例如下（要点：共享输入在 switch 前的步骤取好；分支臂内步骤 required: false；merge 一一覆盖全部 case 目标与 default 目标；合流后的臂外步骤用 one_of 读任一臂输出；顶层 outputs 只引用臂外步骤。when 是谓词对象，left 取上游输出用 {ref: source_output, path: /路径}，常量用 {value: ...}）：\nschema_version: 1\nflow_id: branch-example\nflow_version: 1.0.0\ndescription: 条件分支范例\ninput_schema: {type: object, properties: {mode: {type: string}, context: {type: string}}, required: [mode, context], additionalProperties: false}\noutput_schema: {type: object, properties: {report: {type: string}}, required: [report], additionalProperties: false}\nentry: check_mode\nsteps:\n  - id: check_mode\n    type: llm\n    description: 回显模式\n    required: true\n    inputs: {mode: {ref: flow_input, path: /mode}}\n    output_schema: {type: object, properties: {mode: {type: string}}, required: [mode], additionalProperties: false}\n    model: {id: <菜单中 kind=model 的 id>, version: <其version>}\n    prompt:\n      - role: system\n        content: 只输出 JSON 对象。\n      - role: user\n        content: 'mode={{mode}}'\n  - id: urgent_arm\n    type: llm\n    description: 紧急分支\n    required: false\n    inputs: {context: {ref: flow_input, path: /context}}\n    output_schema: {type: object, properties: {report: {type: string}}, required: [report], additionalProperties: false}\n    model: {id: <菜单中 kind=model 的 id>, version: <其version>}\n    prompt:\n      - role: system\n        content: 只输出 JSON 对象。\n      - role: user\n        content: '紧急处置：{{context}}'\n  - id: normal_arm\n    type: llm\n    description: 常规分支\n    required: false\n    inputs: {context: {ref: flow_input, path: /context}}\n    output_schema: {type: object, properties: {report: {type: string}}, required: [report], additionalProperties: false}\n    model: {id: <菜单中 kind=model 的 id>, version: <其version>}\n    prompt:\n      - role: system\n        content: 只输出 JSON 对象。\n      - role: user\n        content: '例行处理：{{context}}'\n  - id: finalize\n    type: transform\n    description: 合流后组装\n    required: true\n    inputs: {report: {one_of: [{ref: step_output, step: urgent_arm, path: /report}, {ref: step_output, step: normal_arm, path: /report}]}}\n    output_schema: {type: object, properties: {report: {type: string}}, required: [report], additionalProperties: false}\n    operation: {id: <菜单operation的id>, version: <其version>}\ntransitions:\n  - {type: switch, id: route, from: check_mode, cases: [{id: is_urgent, when: {op: eq, left: {ref: source_output, path: /mode}, right: {value: urgent}}, to: urgent_arm}], default: normal_arm}\n  - {type: merge, id: after_route, switch: route, from: [urgent_arm, normal_arm], to: finalize}\noutputs: {report: {ref: step_output, step: finalize, path: /report}}\n禁止使用本骨架与结构约束之外的字段名或结构变体。"
+    },
+    {
+      "role": "user",
+      "content": "## 任务\nDesign a lobby screen for ShieldBattery that displays while players are waiting for a match to start — it should show each player's race selection, their MMR badge, a real-time countdown timer, and a map preview with spawn locations highlighted. I want the layout to feel bold and confident, not like a generic loading screen — think strong typography, dramatic use of negative space, and maybe some subtle animated accents that reinforce the competitive atmosphere without being distracting. Can you build this out as a React component using the existing design system tokens?\n\n## 可用资源菜单（JSON）\n[{\"id\": \"skill-31f49139-029f-4aae-a9d8-186379bc6dda\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Creates visually striking, production-grade frontend interfaces that reject generic \\\"AI slop\\\" aesthetics through intentional design thinking. Implements bold typography, distinctive color palettes, high-impact animations (React Three Fiber, Framer Motion), and unexpected spatial compositions. Use PROACTIVELY when building landing pages, hero sections, 3D visualizations, or any interface requiring memorable visual impact. MUST BE USED when user requests \\\"creative\\\", \\\"bold\\\", \\\"unique\\\", \\\"striking\\\", \\\"3D\\\", \\\"animated\\\", or \\\"next-level\\\" design.\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"31f49139-029f-4aae-a9d8-186379bc6dda\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"bold-frontend-design\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-3f032d2b-cf74-4988-9770-bc7923a16915\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Create distinctive, engaging frontend interfaces for ShieldBattery. Use this skill when building user interfaces. Encourages bold, intentional design decisions within the project's design system.\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"3f032d2b-cf74-4988-9770-bc7923a16915\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"frontend-design\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-cd12e848-8e35-472b-b2ad-0f2f1a180b08\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Graphical and UI/UX design improvements for SvelteKit browser games, including layout, typography, color systems, HUD design, visual polish, and dynamic effects. Use when asked to redesign or enhance a Svelte game's visuals, to improve readability or aesthetics, to add motion/animation polish, or to audit/iterate on UI using Playwright MCP snapshots.\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"cd12e848-8e35-472b-b2ad-0f2f1a180b08\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"svelte-game-visual-design\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-f1b8e797-1899-4625-b405-7c61b58dfc97\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Redesign React components and pages for healthcare SaaS with premium Apple/Uber-like aesthetics while preserving ALL existing logic, hooks, state management, API calls, and event handlers. Use this skill when the user requests to redesign, make premium, improve the look of, or beautify existing React code. Also use when the user provides design inspiration screenshots to adapt. The skill treats all functionality as sacred and focuses purely on visual transformation - layout, styling, typography, colors, spacing, and modern component structures can change freely, but hooks order, state management, backend communication, and all interactions must remain 100% intact.\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"f1b8e797-1899-4625-b405-7c61b58dfc97\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"premium-healthcare-redesign\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-80b30c0a-20cc-4033-a971-6455b9ab3405\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Game design principles. GDD structure, balancing, player psychology, progression.\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"80b30c0a-20cc-4033-a971-6455b9ab3405\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"game-design\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-9a2ed849-34b2-4bec-b657-ef725de45a3c\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Use when designing small UI feedback moments like button states, toggles, form validation, loading indicators, or notification badges.\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"9a2ed849-34b2-4bec-b657-ef725de45a3c\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"micro-interactions\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-05c64ebd-0d80-451b-ae2f-4a7d44ed9751\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Design meaningful interactions and microinteractions. Create delightful user experiences through thoughtful animation, feedback, and responsive interface design.\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"05c64ebd-0d80-451b-ae2f-4a7d44ed9751\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"interaction-design\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-aa9632e8-b106-442e-adee-1b226919898b\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Fluid typography and spacing tokens using Utopia.fyi with cqi (container query inline) units. Reference for the exact type steps and space tokens defined in this project.\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"aa9632e8-b106-442e-adee-1b226919898b\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"utopia-fluid-scales\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-58997cf1-3479-49d1-ba4d-3c8853831538\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Build production-grade React Native mobile apps for iOS and Android with distinctive, high-quality design. Use this skill when the user asks to create mobile apps, mobile UI components, mobile screens, or work with React Native. Focuses on creating visually striking, memorable interfaces that avoid generic \\\"AI slop\\\" aesthetics. Covers bold design choices, UI patterns, navigation, state management, animations, performance optimization, and platform-specific guidelines (iOS Human Interface / Material Design). Suitable for consumer apps, business apps, and enterprise solutions.\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"58997cf1-3479-49d1-ba4d-3c8853831538\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"react-native-mobile\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-5a830e03-aa47-4504-9e1f-4cffb183bf32\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Long-running design anthropologist that builds comprehensive visual databases from 500-1000 real-world examples, extracting color palettes, typography patterns, layout systems, and interaction design across any domain (portfolios, e-commerce, SaaS, adult content, technical showcases). This skill should be used when users need exhaustive design research, pattern recognition across large example sets, or systematic visual analysis for competitive positioning.\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"5a830e03-aa47-4504-9e1f-4cffb183bf32\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"design-archivist\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-ea31c79e-4ff5-4fa9-baae-b334d6432859\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Implement or update project-consistent UI code from a Figma selection or nodeId using TemPad Dev MCP. Use when the user wants visible Figma UI recreated, ported, or integrated into the target project's framework, styling system, tokens, and existing components when available. Do not use for design critique, product invention, generic code review, or for guessing hidden states, responsiveness, or behavior not shown in design or project evidence.\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"ea31c79e-4ff5-4fa9-baae-b334d6432859\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"implementing-figma-ui-tempad-dev\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-6bf5f5d1-b47f-49ec-9628-6e2ceac1ccb5\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Complete design system reference for any project - colors, typography, spacing, components, animations. Adapts to project theme and tech stack. Use when implementing UI, choosing colors, creating animations, or ensuring brand consistency. For new design systems, use ui-research skill first.\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"6bf5f5d1-b47f-49ec-9628-6e2ceac1ccb5\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"generic-design-system\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-c2e7a533-0843-4824-903a-1cd60c03db86\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Game UI design using Unity's uGUI (Canvas/RectTransform/Anchors). Includes game UI elements like HUD, health bars, inventory, skill bars, mobile responsive design, and Safe Area support. Use when: game UI design, HUD creation, Canvas setup, mobile UI, Anchors configuration\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"c2e7a533-0843-4824-903a-1cd60c03db86\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"unity-game-ugui-design\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-e80d5b9f-c48c-4624-be4c-e3cbba2ead15\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Expert interior designer with deep knowledge of space planning, color theory (Munsell, NCS), lighting design (IES standards), furniture proportions, and AI-assisted visualization. Use for room layout optimization, lighting calculations, color palette selection for interiors, furniture placement, style consultation. Activate on \\\"interior design\\\", \\\"room layout\\\", \\\"lighting design\\\", \\\"furniture placement\\\", \\\"space planning\\\", \\\"Munsell color\\\". NOT for exterior/landscape design, architectural structure, web/UI design (use web-design-expert), brand color theory (use color-theory-palette-harmony-expert), or building codes/permits.\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"e80d5b9f-c48c-4624-be4c-e3cbba2ead15\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"interior-design-expert\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-23d81bb9-9066-4907-8456-ccc07ccef1fa\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Fix generic React component designs by applying aesthetic upgrades across the 5 design dimensions (typography, color, motion, spatial composition, backgrounds)\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"23d81bb9-9066-4907-8456-ccc07ccef1fa\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"frontend-design-fix-react\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-e1c31a64-694b-4a98-b3fb-5728ca4bbccd\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Cloodle design system tokens for colors, typography, spacing, and components. Use when styling Cloodle interfaces, creating CSS, or implementing consistent visual design across the platform.\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"e1c31a64-694b-4a98-b3fb-5728ca4bbccd\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"cloodle-design-tokens\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-b92b552f-21b9-436d-9b2f-c99dc7e33fa1\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Set up or update RadTools design system from Figma. Use ONLY for initial design system import (colors, typography, spacing tokens) or when syncing design system updates from Figma. NOT for building pages or components from Figma designs - those use Figma MCP directly with existing RadTools tokens.\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"b92b552f-21b9-436d-9b2f-c99dc7e33fa1\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"radtools-figma-sync\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-2a438453-26b7-42a2-b0df-728e6b98d3fa\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Use when animation doesn't match brand personality, feels generic, or clashes with design language\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"2a438453-26b7-42a2-b0df-728e6b98d3fa\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"brand-consistency\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-a9bd93fe-5379-42ca-a9a4-c745b591aa6f\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"This skill provides prescriptive guidance for writing modern CSS layouts using intrinsic design principles, container queries, and fluid responsive techniques. When implementing CSS layouts, always consult this document first.\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"a9bd93fe-5379-42ca-a9a4-c745b591aa6f\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"css-layout-development\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-83b04dc8-876f-41c9-ae6f-067f84a6b219\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Expert UX Designer that enforces flat, minimal design, strict accessibility (WCAG 2.1 AA), and collaborative design decisions. Use this skill for all UI/UX tasks to avoid \\\"AI slop\\\".\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"83b04dc8-876f-41c9-ae6f-067f84a6b219\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"ux-designer\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skillret-live-model\", \"input_schema\": {\"additionalProperties\": true, \"type\": \"object\"}, \"kind\": \"model\", \"output_schema\": {\"additionalProperties\": true, \"type\": \"object\"}, \"secret_refs\": [\"ZHIPUAI_API_KEY\"], \"version\": \"1.0.0\"}]\n\n## 补充要求（hints）\n{\"apply_skill\": \"Bind inputs query to flow_input /query, skill_body to load_skill /skill_body, skill_name to load_skill /skill_name. Prompt MUST use ALL THREE placeholders {{query}}, {{skill_body}}, {{skill_name}}, demand a JSON object {answer: string}, and request a concise useful answer (at most about 600 words). Treat the skill text as task guidance; do not claim any external actions were executed. output_schema closed object, exactly answer (string, required).\", \"experiment\": \"Select exactly ONE most suitable skill from the supplied menu, read it, then use its guidance to answer the task. This is a skill selection/application experiment, not a request to run external tools.\", \"flow_id\": \"skillret-q-00002\", \"flow_shape\": \"Exactly TWO required steps: load_skill (transform, operation = your chosen skill resource) -> apply_skill (llm, model = skillret-live-model version 1.0.0). One next transition only. Do not add other steps or resources.\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {\"query\": {\"type\": \"string\"}}, \"required\": [\"query\"], \"type\": \"object\"}, \"load_skill\": \"inputs must be {}. output_schema is a closed object with exactly skill_id, skill_name, skill_description, skill_body (all strings, all required). These are returned by the chosen operation. Do not invent a skill id in literal inputs.\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"answer\": {\"type\": \"string\"}, \"skill_id\": {\"type\": \"string\"}, \"skill_name\": {\"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"answer\"], \"type\": \"object\"}, \"outputs\": \"Bind skill_id and skill_name from load_skill; bind answer from apply_skill. All object schemas use additionalProperties:false and required listing every property. Emit raw YAML only, no prose or fences.\"}\n"
+    },
+    {
+      "role": "user",
+      "content": "第 1 次草案无效（parse_failed）：[yaml_parse_error] /:28:None: mapping values are not allowed here\n  in \"<unicode string>\", line 28, column 39:\n     ...   content: 只输出一个 JSON 对象 {answer: string}。回答简洁实用，最多约 600 词。技能文本仅 ... \n                                         ^。请修正后重新输出完整 YAML 文档。"
+    }
+  ],
+  "retrieval": {
+    "mode": "retriever",
+    "candidates": [
+      {
+        "kind": "operation",
+        "id": "skill-31f49139-029f-4aae-a9d8-186379bc6dda",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-3f032d2b-cf74-4988-9770-bc7923a16915",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-cd12e848-8e35-472b-b2ad-0f2f1a180b08",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-f1b8e797-1899-4625-b405-7c61b58dfc97",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-80b30c0a-20cc-4033-a971-6455b9ab3405",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-9a2ed849-34b2-4bec-b657-ef725de45a3c",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-05c64ebd-0d80-451b-ae2f-4a7d44ed9751",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-aa9632e8-b106-442e-adee-1b226919898b",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-58997cf1-3479-49d1-ba4d-3c8853831538",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-5a830e03-aa47-4504-9e1f-4cffb183bf32",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-ea31c79e-4ff5-4fa9-baae-b334d6432859",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-6bf5f5d1-b47f-49ec-9628-6e2ceac1ccb5",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-c2e7a533-0843-4824-903a-1cd60c03db86",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-e80d5b9f-c48c-4624-be4c-e3cbba2ead15",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-23d81bb9-9066-4907-8456-ccc07ccef1fa",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-e1c31a64-694b-4a98-b3fb-5728ca4bbccd",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-b92b552f-21b9-436d-9b2f-c99dc7e33fa1",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-2a438453-26b7-42a2-b0df-728e6b98d3fa",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-a9bd93fe-5379-42ca-a9a4-c745b591aa6f",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-83b04dc8-876f-41c9-ae6f-067f84a6b219",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "model",
+        "id": "skillret-live-model",
+        "version": "1.0.0"
+      }
+    ]
+  },
+  "attempts": [
+    {
+      "seq": 1,
+      "response": {
+        "content": "schema_version: 1\nflow_id: skillret-q-00002\nflow_version: 1.0.0\ndescription: 加载 frontend-design 技能并据此回答 ShieldBattery 大厅界面设计任务\ninput_schema: {type: object, properties: {query: {type: string}}, required: [query], additionalProperties: false}\noutput_schema: {type: object, properties: {answer: {type: string}, skill_id: {type: string}, skill_name: {type: string}}, required: [answer, skill_id, skill_name], additionalProperties: false}\nentry: load_skill\nsteps:\n  - id: load_skill\n    type: transform\n    description: 加载 ShieldBattery 前端设计技能\n    required: true\n    inputs: {}\n    output_schema: {type: object, properties: {skill_id: {type: string}, skill_name: {type: string}, skill_description: {type: string}, skill_body: {type: string}}, required: [skill_id, skill_name, skill_description, skill_body], additionalProperties: false}\n    operation: {id: skill-3f032d2b-cf74-4988-9770-bc7923a16915, version: 1.0.0}\n  - id: apply_skill\n    type: llm\n    description: 依据技能指导生成 React 大厅界面组件\n    required: true\n    inputs:\n      query: {ref: flow_input, path: /query}\n      skill_body: {ref: step_output, step: load_skill, path: /skill_body}\n      skill_name: {ref: step_output, step: load_skill, path: /skill_name}\n    output_schema: {type: object, properties: {answer: {type: string}}, required: [answer], additionalProperties: false}\n    model: {id: skillret-live-model, version: 1.0.0}\n    prompt:\n      - role: system\n        content: 只输出一个 JSON 对象 {answer: string}。回答简洁实用，最多约 600 词。技能文本仅作为任务指导，不得声称执行了任何外部操作。\n      - role: user\n        content: '任务：{{query}}\\n\\n技能名称：{{skill_name}}\\n\\n技能指导文本：\\n{{skill_body}}\\n\\n请依据以上技能指导完成该前端设计任务，给出 React 组件实现方案。'\ntransitions:\n  - {type: next, id: t1, from: load_skill, to: apply_skill}\noutputs:\n  answer: {ref: step_output, step: apply_skill, path: /answer}\n  skill_id: {ref: step_output, step: load_skill, path: /skill_id}\n  skill_name: {ref: step_output, step: load_skill, path: /skill_name}",
+        "content_type": "str",
+        "transport_status": "ok",
+        "error": null,
+        "error_type": null,
+        "usage": {
+          "source": "provider",
+          "input": 7873,
+          "output": 613,
+          "total": 8486,
+          "estimated": false,
+          "cached": 0
+        }
+      },
+      "valid": false,
+      "errors": [
+        {
+          "code": "parse_failed",
+          "message": "[yaml_parse_error] /:28:None: mapping values are not allowed here\n  in \"<unicode string>\", line 28, column 39:\n     ...   content: 只输出一个 JSON 对象 {answer: string}。回答简洁实用，最多约 600 词。技能文本仅 ... \n                                         ^"
+        }
+      ]
+    },
+    {
+      "seq": 2,
+      "response": {
+        "content": "schema_version: 1\nflow_id: skillret-q-00002\nflow_version: 1.0.0\ndescription: 选择最合适的技能并用其指导回答前端设计任务\ninput_schema: {type: object, properties: {query: {type: string}}, required: [query], additionalProperties: false}\noutput_schema: {type: object, properties: {answer: {type: string}, skill_id: {type: string}, skill_name: {type: string}}, required: [skill_id, skill_name, answer], additionalProperties: false}\nentry: load_skill\nsteps:\n  - id: load_skill\n    type: transform\n    description: 读取选定技能文本\n    required: true\n    inputs: {}\n    output_schema: {type: object, properties: {skill_id: {type: string}, skill_name: {type: string}, skill_description: {type: string}, skill_body: {type: string}}, required: [skill_id, skill_name, skill_description, skill_body], additionalProperties: false}\n    operation: {id: skill-3f032d2b-cf74-4988-9770-bc7923a16915, version: 1.0.0}\n  - id: apply_skill\n    type: llm\n    description: 按技能指导生成回答\n    required: true\n    inputs:\n      query: {ref: flow_input, path: /query}\n      skill_body: {ref: step_output, step: load_skill, path: /skill_body}\n      skill_name: {ref: step_output, step: load_skill, path: /skill_name}\n    output_schema: {type: object, properties: {answer: {type: string}}, required: [answer], additionalProperties: false}\n    model: {id: skillret-live-model, version: 1.0.0}\n    prompt:\n      - role: system\n        content: '你是一名资深前端工程师。只输出一个 JSON 对象，形如 {\"answer\": string}。回答简洁实用，最多约 600 词。技能文本仅作为任务指导，不得声称执行了任何外部操作。'\n      - role: user\n        content: '技能名称：{{skill_name}}\\n技能指导：{{skill_body}}\\n任务：{{query}}'\ntransitions:\n  - {type: next, id: t1, from: load_skill, to: apply_skill}\noutputs:\n  skill_id: {ref: step_output, step: load_skill, path: /skill_id}\n  skill_name: {ref: step_output, step: load_skill, path: /skill_name}\n  answer: {ref: step_output, step: apply_skill, path: /answer}",
+        "content_type": "str",
+        "transport_status": "ok",
+        "error": null,
+        "error_type": null,
+        "usage": {
+          "source": "provider",
+          "input": 7963,
+          "output": 601,
+          "total": 8564,
+          "estimated": false,
+          "cached": 2048
+        }
+      },
+      "valid": true,
+      "errors": []
+    }
+  ],
+  "retry_limit": 3,
+  "adopted": {
+    "definition": {
+      "schema_version": 1,
+      "flow_id": "skillret-q-00002",
+      "flow_version": "1.0.0",
+      "description": "选择最合适的技能并用其指导回答前端设计任务",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "additionalProperties": false
+      },
+      "entry": "load_skill",
+      "steps": [
+        {
+          "id": "load_skill",
+          "description": "读取选定技能文本",
+          "required": true,
+          "inputs": {},
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "skill_id": {
+                "type": "string"
+              },
+              "skill_name": {
+                "type": "string"
+              },
+              "skill_description": {
+                "type": "string"
+              },
+              "skill_body": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "skill_id",
+              "skill_name",
+              "skill_description",
+              "skill_body"
+            ],
+            "additionalProperties": false
+          },
+          "type": "transform",
+          "operation": {
+            "id": "skill-3f032d2b-cf74-4988-9770-bc7923a16915",
+            "version": "1.0.0"
+          }
+        },
+        {
+          "id": "apply_skill",
+          "description": "按技能指导生成回答",
+          "required": true,
+          "inputs": {
+            "query": {
+              "ref": "flow_input",
+              "path": "/query"
+            },
+            "skill_body": {
+              "ref": "step_output",
+              "step": "load_skill",
+              "path": "/skill_body"
+            },
+            "skill_name": {
+              "ref": "step_output",
+              "step": "load_skill",
+              "path": "/skill_name"
+            }
+          },
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "answer": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "answer"
+            ],
+            "additionalProperties": false
+          },
+          "type": "llm",
+          "model": {
+            "id": "skillret-live-model",
+            "version": "1.0.0"
+          },
+          "prompt": [
+            {
+              "role": "system",
+              "content": "你是一名资深前端工程师。只输出一个 JSON 对象，形如 {\"answer\": string}。回答简洁实用，最多约 600 词。技能文本仅作为任务指导，不得声称执行了任何外部操作。"
+            },
+            {
+              "role": "user",
+              "content": "技能名称：{{skill_name}}\\n技能指导：{{skill_body}}\\n任务：{{query}}"
+            }
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "type": "next",
+          "id": "t1",
+          "from": "load_skill",
+          "to": "apply_skill"
+        }
+      ],
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "answer": {
+            "type": "string"
+          },
+          "skill_id": {
+            "type": "string"
+          },
+          "skill_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "skill_id",
+          "skill_name",
+          "answer"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "skill_id": {
+          "ref": "step_output",
+          "step": "load_skill",
+          "path": "/skill_id"
+        },
+        "skill_name": {
+          "ref": "step_output",
+          "step": "load_skill",
+          "path": "/skill_name"
+        },
+        "answer": {
+          "ref": "step_output",
+          "step": "apply_skill",
+          "path": "/answer"
+        }
+      }
+    },
+    "definition_hash": "sha256:3134ae4bc920f0ac3c6a281c0489f0e12fa6ddd205017b4be1a3f60e6b23b87b"
+  },
+  "terminal_stage": "completed",
+  "error": null
+}

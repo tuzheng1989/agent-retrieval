@@ -1,0 +1,216 @@
+{
+  "compiled_plan_hash": "sha256:0676b379582fdb36e2b0ad9bbc59f586b17d9629c9d88aadbb7fea3795a70f53",
+  "compiled_schema_version": 1,
+  "control_regions": {
+    "forks": {},
+    "switches": {}
+  },
+  "declared_topology": {
+    "definition": {
+      "description": "planner 草案（最小双 transform 链）",
+      "entry": "step_a",
+      "flow_id": "drafted-flow",
+      "flow_version": "0.1.0",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "type": "object"
+      },
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "type": "object"
+      },
+      "outputs": {
+        "text": {
+          "path": "/text",
+          "ref": "step_output",
+          "step": "step_b"
+        }
+      },
+      "schema_version": 1,
+      "steps": [
+        {
+          "description": "透传",
+          "id": "step_a",
+          "inputs": {
+            "text": {
+              "path": "/text",
+              "ref": "flow_input"
+            }
+          },
+          "operation": {
+            "id": "t-op",
+            "version": "1.0.0"
+          },
+          "output_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "text"
+            ],
+            "type": "object"
+          },
+          "required": true,
+          "type": "transform"
+        },
+        {
+          "description": "透传",
+          "id": "step_b",
+          "inputs": {
+            "text": {
+              "path": "/text",
+              "ref": "step_output",
+              "step": "step_a"
+            }
+          },
+          "operation": {
+            "id": "t-op",
+            "version": "1.0.0"
+          },
+          "output_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "text"
+            ],
+            "type": "object"
+          },
+          "required": true,
+          "type": "transform"
+        }
+      ],
+      "transitions": [
+        {
+          "from": "step_a",
+          "id": "a_to_b",
+          "to": "step_b",
+          "type": "next"
+        }
+      ]
+    },
+    "entry": "step_a",
+    "steps": [
+      "step_a",
+      "step_b"
+    ],
+    "transitions": {
+      "a_to_b": {
+        "from": "step_a",
+        "to": "step_b",
+        "type": "next"
+      }
+    }
+  },
+  "finalization": {
+    "join_forks": {},
+    "merge_switches": {},
+    "output_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "type": "object"
+    },
+    "outputs": {
+      "text": {
+        "path": "/text",
+        "ref": "step_output",
+        "step": "step_b"
+      }
+    },
+    "terminals": [
+      "step_b"
+    ]
+  },
+  "frozen_execution_hash": "sha256:298196dfed6e6ab91978304f984b195daa4cf4d06807c20aabfdad0a609878de",
+  "internal_nodes": {
+    "success_gates": {
+      "step_a": "__gate_step_a",
+      "step_b": "__gate_step_b"
+    },
+    "switch_controls": {}
+  },
+  "profiles": {
+    "compiler": {
+      "name": "rhetra-compiler",
+      "version": "0.1.0"
+    },
+    "resolver": {
+      "name": "rhetra-resolver",
+      "version": "0.1.0"
+    },
+    "runtime": {
+      "langgraph": "1.2.7",
+      "name": "rhetra-runtime",
+      "version": "0.1.0"
+    },
+    "validator": {
+      "name": "rhetra-validator",
+      "version": "0.1.0"
+    }
+  },
+  "source_map": {
+    "steps": {
+      "step_a": {
+        "gate": "__gate_step_a",
+        "node": "step_a"
+      },
+      "step_b": {
+        "gate": "__gate_step_b",
+        "node": "step_b"
+      }
+    },
+    "transitions": {
+      "a_to_b": {
+        "kind": "next",
+        "wiring": [
+          {
+            "from": "__gate_step_a",
+            "kind": "edge",
+            "to": "step_b"
+          }
+        ]
+      }
+    }
+  },
+  "state_channels": {
+    "abort": "monotonic_first_wins",
+    "branch_choices": "merge_no_conflict",
+    "step_outcomes": "merge_no_conflict"
+  },
+  "wiring": [
+    {
+      "from": "__gate_step_a",
+      "kind": "edge",
+      "to": "step_b"
+    }
+  ]
+}

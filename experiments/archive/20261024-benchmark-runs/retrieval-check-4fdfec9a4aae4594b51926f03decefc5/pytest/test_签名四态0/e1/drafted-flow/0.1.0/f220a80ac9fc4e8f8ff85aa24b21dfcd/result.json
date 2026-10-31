@@ -1,0 +1,23 @@
+{
+  "conformance": {
+    "checks": {
+      "branch_choice_completeness": true,
+      "external_calls": 0,
+      "permits": 2,
+      "seq_max": 12
+    },
+    "conformant": true,
+    "violations": []
+  },
+  "flow_output": {
+    "text": "hi"
+  },
+  "frozen_execution_hash": "sha256:109a019e789593ed2ce81ac0f57bb535a5e8fe69761d12b8125de7fbc96003bc",
+  "invocation_id": "f220a80ac9fc4e8f8ff85aa24b21dfcd",
+  "status": "completed",
+  "step_outcomes": {
+    "step_a": "completed",
+    "step_b": "completed"
+  },
+  "usage_summary": {}
+}

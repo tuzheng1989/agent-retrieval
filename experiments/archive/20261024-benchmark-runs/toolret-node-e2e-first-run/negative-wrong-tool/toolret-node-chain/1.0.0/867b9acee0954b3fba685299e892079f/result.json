@@ -1,0 +1,46 @@
+{
+  "conformance": {
+    "checks": {
+      "branch_choice_completeness": true,
+      "external_calls": 3,
+      "permits": 3,
+      "seq_max": 23
+    },
+    "conformant": true,
+    "violations": []
+  },
+  "flow_output": {
+    "result": 1
+  },
+  "frozen_execution_hash": "sha256:1ac6ea9b35020941de7d994c960997a8a6478bd2bc3b0bc4facf97433b09c72e",
+  "invocation_id": "867b9acee0954b3fba685299e892079f",
+  "status": "completed",
+  "step_outcomes": {
+    "add_numbers": "completed",
+    "gcd_result": "completed",
+    "square_sum": "completed"
+  },
+  "usage_summary": {
+    "se-1a7037e8fbb6": {
+      "calls": 1,
+      "sources": [
+        "fake-counter"
+      ],
+      "tokens": 0
+    },
+    "se-6179cdcfc570": {
+      "calls": 1,
+      "sources": [
+        "fake-counter"
+      ],
+      "tokens": 0
+    },
+    "se-f1f7dd570ccc": {
+      "calls": 1,
+      "sources": [
+        "fake-counter"
+      ],
+      "tokens": 0
+    }
+  }
+}

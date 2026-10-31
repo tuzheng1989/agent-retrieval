@@ -1,0 +1,485 @@
+{
+  "authorization": {
+    "grants": {
+      "load_skill": {
+        "action": "invoke",
+        "argument_contract_hash": "sha256:6dd85934ff6207585cf6af188ec74bbacee4a984db4f7d42839320e299f3708b",
+        "max_attempts": 1,
+        "resource": {
+          "kind": "operation",
+          "id": "skill-3f032d2b-cf74-4988-9770-bc7923a16915",
+          "version": "1.0.0",
+          "content_hash": "sha256:ff90ae0a305c0fa9394e360c37bbac4d93fbef2a43972e5aef0536e1756ffe4d",
+          "contract_hash": "sha256:6dd85934ff6207585cf6af188ec74bbacee4a984db4f7d42839320e299f3708b"
+        }
+      },
+      "apply_skill": {
+        "action": "invoke",
+        "argument_contract_hash": "sha256:e1751115ed8fb1890a246c39dfc433f992e2bcd6ab96ad45a5357ee91216e8e6",
+        "max_attempts": 1,
+        "resource": {
+          "kind": "model",
+          "id": "skillret-live-model",
+          "version": "1.0.0",
+          "content_hash": "sha256:a9da7bb40f68411ff2e049d6a28be5eaaa1988666f8e157d5e0912131caff307",
+          "contract_hash": "sha256:e1751115ed8fb1890a246c39dfc433f992e2bcd6ab96ad45a5357ee91216e8e6"
+        }
+      }
+    },
+    "source": {
+      "id": "resource-snapshot",
+      "hash": "sha256:18e3252d46d750e9b5c24d287ebdf83511a222716491216fa234985195019212"
+    },
+    "subject": {
+      "kind": "standalone"
+    }
+  },
+  "constraints": {
+    "deadline_seconds": 600.0,
+    "max_llm_calls": 32,
+    "max_output_tokens": 8192,
+    "max_tool_calls": 32
+  },
+  "evidence_policy": {
+    "business_input": "full",
+    "diagnostics": "full",
+    "model_response": "full",
+    "prompt": "full",
+    "stream": "full",
+    "tool_request": "full",
+    "tool_response": "full"
+  },
+  "flow": {
+    "definition": {
+      "description": "选择最合适的技能并用其指导回答前端设计任务",
+      "entry": "load_skill",
+      "flow_id": "skillret-q-00002",
+      "flow_version": "1.0.0",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "answer": {
+            "type": "string"
+          },
+          "skill_id": {
+            "type": "string"
+          },
+          "skill_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "answer",
+          "skill_id",
+          "skill_name"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "answer": {
+          "path": "/answer",
+          "ref": "step_output",
+          "step": "apply_skill"
+        },
+        "skill_id": {
+          "path": "/skill_id",
+          "ref": "step_output",
+          "step": "load_skill"
+        },
+        "skill_name": {
+          "path": "/skill_name",
+          "ref": "step_output",
+          "step": "load_skill"
+        }
+      },
+      "schema_version": 1,
+      "steps": [
+        {
+          "description": "按技能指导生成回答",
+          "id": "apply_skill",
+          "inputs": {
+            "query": {
+              "path": "/query",
+              "ref": "flow_input"
+            },
+            "skill_body": {
+              "path": "/skill_body",
+              "ref": "step_output",
+              "step": "load_skill"
+            },
+            "skill_name": {
+              "path": "/skill_name",
+              "ref": "step_output",
+              "step": "load_skill"
+            }
+          },
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "answer": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "answer"
+            ],
+            "additionalProperties": false
+          },
+          "required": true,
+          "type": "llm",
+          "model": {
+            "id": "skillret-live-model",
+            "version": "1.0.0"
+          },
+          "prompt": [
+            {
+              "content": "你是一名资深前端工程师。只输出一个 JSON 对象，形如 {\"answer\": string}。回答简洁实用，最多约 600 词。技能文本仅作为任务指导，不得声称执行了任何外部操作。",
+              "role": "system"
+            },
+            {
+              "content": "技能名称：{{skill_name}}\\n技能指导：{{skill_body}}\\n任务：{{query}}",
+              "role": "user"
+            }
+          ]
+        },
+        {
+          "description": "读取选定技能文本",
+          "id": "load_skill",
+          "inputs": {},
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "skill_id": {
+                "type": "string"
+              },
+              "skill_name": {
+                "type": "string"
+              },
+              "skill_description": {
+                "type": "string"
+              },
+              "skill_body": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "skill_body",
+              "skill_description",
+              "skill_id",
+              "skill_name"
+            ],
+            "additionalProperties": false
+          },
+          "required": true,
+          "type": "transform",
+          "operation": {
+            "id": "skill-3f032d2b-cf74-4988-9770-bc7923a16915",
+            "version": "1.0.0"
+          }
+        }
+      ],
+      "transitions": [
+        {
+          "id": "t1",
+          "type": "next",
+          "from": "load_skill",
+          "to": "apply_skill"
+        }
+      ]
+    },
+    "definition_hash": "sha256:3134ae4bc920f0ac3c6a281c0489f0e12fa6ddd205017b4be1a3f60e6b23b87b",
+    "definition_raw": {
+      "schema_version": 1,
+      "flow_id": "skillret-q-00002",
+      "flow_version": "1.0.0",
+      "description": "选择最合适的技能并用其指导回答前端设计任务",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "additionalProperties": false
+      },
+      "entry": "load_skill",
+      "steps": [
+        {
+          "id": "load_skill",
+          "description": "读取选定技能文本",
+          "required": true,
+          "inputs": {},
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "skill_id": {
+                "type": "string"
+              },
+              "skill_name": {
+                "type": "string"
+              },
+              "skill_description": {
+                "type": "string"
+              },
+              "skill_body": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "skill_id",
+              "skill_name",
+              "skill_description",
+              "skill_body"
+            ],
+            "additionalProperties": false
+          },
+          "type": "transform",
+          "operation": {
+            "id": "skill-3f032d2b-cf74-4988-9770-bc7923a16915",
+            "version": "1.0.0"
+          }
+        },
+        {
+          "id": "apply_skill",
+          "description": "按技能指导生成回答",
+          "required": true,
+          "inputs": {
+            "query": {
+              "ref": "flow_input",
+              "path": "/query"
+            },
+            "skill_body": {
+              "ref": "step_output",
+              "step": "load_skill",
+              "path": "/skill_body"
+            },
+            "skill_name": {
+              "ref": "step_output",
+              "step": "load_skill",
+              "path": "/skill_name"
+            }
+          },
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "answer": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "answer"
+            ],
+            "additionalProperties": false
+          },
+          "type": "llm",
+          "model": {
+            "id": "skillret-live-model",
+            "version": "1.0.0"
+          },
+          "prompt": [
+            {
+              "role": "system",
+              "content": "你是一名资深前端工程师。只输出一个 JSON 对象，形如 {\"answer\": string}。回答简洁实用，最多约 600 词。技能文本仅作为任务指导，不得声称执行了任何外部操作。"
+            },
+            {
+              "role": "user",
+              "content": "技能名称：{{skill_name}}\\n技能指导：{{skill_body}}\\n任务：{{query}}"
+            }
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "type": "next",
+          "id": "t1",
+          "from": "load_skill",
+          "to": "apply_skill"
+        }
+      ],
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "answer": {
+            "type": "string"
+          },
+          "skill_id": {
+            "type": "string"
+          },
+          "skill_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "skill_id",
+          "skill_name",
+          "answer"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "skill_id": {
+          "ref": "step_output",
+          "step": "load_skill",
+          "path": "/skill_id"
+        },
+        "skill_name": {
+          "ref": "step_output",
+          "step": "load_skill",
+          "path": "/skill_name"
+        },
+        "answer": {
+          "ref": "step_output",
+          "step": "apply_skill",
+          "path": "/answer"
+        }
+      }
+    },
+    "id": "skillret-q-00002",
+    "source_hash": "sha256:830c0976a36fd245c621a8b1d4da728bfce4fdca9eb513bcf2e90a3e753dffbd",
+    "version": "1.0.0"
+  },
+  "frozen_schema_version": 1,
+  "input": {
+    "hash": "sha256:6edd403b5a7103df6e1530d9b085358068633a5b40fc1bc5fb37ff4bcca01092",
+    "value": {
+      "query": "Design a lobby screen for ShieldBattery that displays while players are waiting for a match to start — it should show each player's race selection, their MMR badge, a real-time countdown timer, and a map preview with spawn locations highlighted. I want the layout to feel bold and confident, not like a generic loading screen — think strong typography, dramatic use of negative space, and maybe some subtle animated accents that reinforce the competitive atmosphere without being distracting. Can you build this out as a React component using the existing design system tokens?"
+    }
+  },
+  "profiles": {
+    "compiler": {
+      "name": "rhetra-compiler",
+      "version": "0.1.0"
+    },
+    "resolver": {
+      "name": "rhetra-resolver",
+      "version": "0.1.0"
+    },
+    "runtime": {
+      "name": "rhetra-runtime",
+      "version": "0.1.0",
+      "langgraph": "1.2.7"
+    },
+    "validator": {
+      "name": "rhetra-validator",
+      "version": "0.1.0"
+    }
+  },
+  "resources": {
+    "apply_skill": {
+      "selector": {
+        "id": "skillret-live-model",
+        "version": "1.0.0"
+      },
+      "resolved": {
+        "kind": "model",
+        "id": "skillret-live-model",
+        "version": "1.0.0",
+        "contract": {
+          "input_schema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "output_schema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "effect_class": null,
+          "idempotency": null
+        },
+        "config": {
+          "api_base": "https://open.bigmodel.cn/api/coding/paas/v4",
+          "model_id": "glm-5.3-flash",
+          "timeout": 120,
+          "structured_output": true,
+          "streaming": true,
+          "stream_usage": true,
+          "extra_body": {
+            "thinking": {
+              "type": "disabled"
+            }
+          },
+          "limit": {
+            "output": 4096
+          }
+        },
+        "secret_refs": [
+          "ZHIPUAI_API_KEY"
+        ],
+        "implementation": "models.json:skillret-e2e/glm-5.3-flash:2026-10-24",
+        "content_hash": "sha256:a9da7bb40f68411ff2e049d6a28be5eaaa1988666f8e157d5e0912131caff307",
+        "contract_hash": "sha256:e1751115ed8fb1890a246c39dfc433f992e2bcd6ab96ad45a5357ee91216e8e6",
+        "config_hash": "sha256:f04e4aeff4b636489eeed355e0a289a1b7f4e00764bf88ef22ed26643fb5fc9d"
+      }
+    },
+    "load_skill": {
+      "selector": {
+        "id": "skill-3f032d2b-cf74-4988-9770-bc7923a16915",
+        "version": "1.0.0"
+      },
+      "resolved": {
+        "kind": "operation",
+        "id": "skill-3f032d2b-cf74-4988-9770-bc7923a16915",
+        "version": "1.0.0",
+        "contract": {
+          "input_schema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          },
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "skill_id": {
+                "type": "string",
+                "const": "3f032d2b-cf74-4988-9770-bc7923a16915"
+              },
+              "skill_name": {
+                "type": "string",
+                "const": "frontend-design"
+              },
+              "skill_description": {
+                "type": "string",
+                "const": "Create distinctive, engaging frontend interfaces for ShieldBattery. Use this skill when building user interfaces. Encourages bold, intentional design decisions within the project's design system."
+              },
+              "skill_body": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "skill_id",
+              "skill_name",
+              "skill_description",
+              "skill_body"
+            ],
+            "additionalProperties": false
+          },
+          "effect_class": null,
+          "idempotency": null
+        },
+        "config": {},
+        "secret_refs": [],
+        "implementation": "skillret-read:3f032d2b-cf74-4988-9770-bc7923a16915",
+        "content_hash": "sha256:ff90ae0a305c0fa9394e360c37bbac4d93fbef2a43972e5aef0536e1756ffe4d",
+        "contract_hash": "sha256:6dd85934ff6207585cf6af188ec74bbacee4a984db4f7d42839320e299f3708b",
+        "config_hash": "sha256:319ecb3b2ee9b94a33cdd645034f9018f260a6a904ddba9a848e82a7e231e25b"
+      }
+    }
+  },
+  "frozen_execution_hash": "sha256:46820de585c98037d0f7220123e0c354846c1babfa01017b0548e88833ab510f"
+}

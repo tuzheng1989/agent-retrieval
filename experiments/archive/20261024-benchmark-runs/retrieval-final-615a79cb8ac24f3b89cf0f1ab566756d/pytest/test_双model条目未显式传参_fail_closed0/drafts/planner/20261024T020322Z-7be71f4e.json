@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "plan_id": "fc1a4ce2194147cd81a6f2200d59f096",
+  "task": "做一条最小流程",
+  "hints": null,
+  "model": null,
+  "prompt": null,
+  "retrieval": {
+    "mode": "all",
+    "candidates": null
+  },
+  "attempts": [],
+  "retry_limit": 3,
+  "adopted": null,
+  "terminal_stage": "model_resolution",
+  "error": {
+    "stage": "model_resolution",
+    "code": "model_not_unique",
+    "message": "快照 kind=model 条目数为 2（要求恰好一个）；请改用 plan_flow(planner_model='<id>') 显式指定"
+  }
+}

@@ -1,0 +1,565 @@
+{
+  "authorization": {
+    "grants": {
+      "add_numbers": {
+        "action": "invoke",
+        "argument_contract_hash": "sha256:0c52f6cde807ebb2bf0c6f4e29eb3c9ef7cae735e7dc8c66ddd7dc81aa90b869",
+        "max_attempts": 1,
+        "resource": {
+          "kind": "tool",
+          "id": "toolret-gcd-toolink-tool-587",
+          "version": "1.0.0",
+          "content_hash": "sha256:b271af6dc636445ff91815187364a8df7a0e3fcf36f9f7a7f994d17bf98b274f",
+          "contract_hash": "sha256:0c52f6cde807ebb2bf0c6f4e29eb3c9ef7cae735e7dc8c66ddd7dc81aa90b869"
+        }
+      },
+      "square_sum": {
+        "action": "invoke",
+        "argument_contract_hash": "sha256:ae1cb4ad954008c0fbd5fa21820a94d30c22fe534cc6b9918e3e52e9e931b156",
+        "max_attempts": 1,
+        "resource": {
+          "kind": "tool",
+          "id": "toolret-square-toolink-tool-226",
+          "version": "1.0.0",
+          "content_hash": "sha256:156934c2711def6c2dc07909de7e39a10cc9392ee2f3c73ca402f9d44c53d214",
+          "contract_hash": "sha256:ae1cb4ad954008c0fbd5fa21820a94d30c22fe534cc6b9918e3e52e9e931b156"
+        }
+      },
+      "gcd_result": {
+        "action": "invoke",
+        "argument_contract_hash": "sha256:0c52f6cde807ebb2bf0c6f4e29eb3c9ef7cae735e7dc8c66ddd7dc81aa90b869",
+        "max_attempts": 1,
+        "resource": {
+          "kind": "tool",
+          "id": "toolret-gcd-toolink-tool-587",
+          "version": "1.0.0",
+          "content_hash": "sha256:b271af6dc636445ff91815187364a8df7a0e3fcf36f9f7a7f994d17bf98b274f",
+          "contract_hash": "sha256:0c52f6cde807ebb2bf0c6f4e29eb3c9ef7cae735e7dc8c66ddd7dc81aa90b869"
+        }
+      }
+    },
+    "source": {
+      "id": "resource-snapshot",
+      "hash": "sha256:cf4f5b14a077b4ebe89a6c70d00af8a7a3db7cc66a54329c2d75728b89fbce8a"
+    },
+    "subject": {
+      "kind": "standalone"
+    }
+  },
+  "constraints": {
+    "deadline_seconds": 600.0,
+    "max_llm_calls": 32,
+    "max_output_tokens": 8192,
+    "max_tool_calls": 32
+  },
+  "evidence_policy": {
+    "business_input": "full",
+    "diagnostics": "full",
+    "model_response": "full",
+    "prompt": "full",
+    "stream": "full",
+    "tool_request": "full",
+    "tool_response": "full"
+  },
+  "flow": {
+    "definition": {
+      "description": "add → square → gcd 链式工具调用",
+      "entry": "add_numbers",
+      "flow_id": "toolret-node-chain",
+      "flow_version": "1.0.0",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "a": {
+            "type": "integer"
+          },
+          "b": {
+            "type": "integer"
+          },
+          "modulus": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "a",
+          "b",
+          "modulus"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "result": {
+          "path": "/result",
+          "ref": "step_output",
+          "step": "gcd_result"
+        }
+      },
+      "schema_version": 1,
+      "steps": [
+        {
+          "description": "计算输入 a 与 b 的和",
+          "id": "add_numbers",
+          "inputs": {
+            "a": {
+              "path": "/a",
+              "ref": "flow_input"
+            },
+            "b": {
+              "path": "/b",
+              "ref": "flow_input"
+            }
+          },
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "result": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "result"
+            ],
+            "additionalProperties": false
+          },
+          "required": true,
+          "type": "tool",
+          "tool": {
+            "id": "toolret-gcd-toolink-tool-587",
+            "version": "1.0.0"
+          }
+        },
+        {
+          "description": "对平方结果与 modulus 求最大公约数",
+          "id": "gcd_result",
+          "inputs": {
+            "a": {
+              "path": "/result",
+              "ref": "step_output",
+              "step": "square_sum"
+            },
+            "b": {
+              "path": "/modulus",
+              "ref": "flow_input"
+            }
+          },
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "result": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "result"
+            ],
+            "additionalProperties": false
+          },
+          "required": true,
+          "type": "tool",
+          "tool": {
+            "id": "toolret-gcd-toolink-tool-587",
+            "version": "1.0.0"
+          }
+        },
+        {
+          "description": "对 add 的实际结果求平方",
+          "id": "square_sum",
+          "inputs": {
+            "number": {
+              "path": "/result",
+              "ref": "step_output",
+              "step": "add_numbers"
+            }
+          },
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "result": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "result"
+            ],
+            "additionalProperties": false
+          },
+          "required": true,
+          "type": "tool",
+          "tool": {
+            "id": "toolret-square-toolink-tool-226",
+            "version": "1.0.0"
+          }
+        }
+      ],
+      "transitions": [
+        {
+          "id": "t1",
+          "type": "next",
+          "from": "add_numbers",
+          "to": "square_sum"
+        },
+        {
+          "id": "t2",
+          "type": "next",
+          "from": "square_sum",
+          "to": "gcd_result"
+        }
+      ]
+    },
+    "definition_hash": "sha256:e0977cfad08ab808574cfc8fc93dc67653e1a109097612e37c218ec758b8fe28",
+    "definition_raw": {
+      "schema_version": 1,
+      "flow_id": "toolret-node-chain",
+      "flow_version": "1.0.0",
+      "description": "add → square → gcd 链式工具调用",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "a": {
+            "type": "integer"
+          },
+          "b": {
+            "type": "integer"
+          },
+          "modulus": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "a",
+          "b",
+          "modulus"
+        ],
+        "additionalProperties": false
+      },
+      "entry": "add_numbers",
+      "steps": [
+        {
+          "id": "add_numbers",
+          "description": "计算输入 a 与 b 的和",
+          "required": true,
+          "inputs": {
+            "a": {
+              "ref": "flow_input",
+              "path": "/a"
+            },
+            "b": {
+              "ref": "flow_input",
+              "path": "/b"
+            }
+          },
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "result": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "result"
+            ],
+            "additionalProperties": false
+          },
+          "type": "tool",
+          "tool": {
+            "id": "toolret-gcd-toolink-tool-587",
+            "version": "1.0.0"
+          }
+        },
+        {
+          "id": "square_sum",
+          "description": "对 add 的实际结果求平方",
+          "required": true,
+          "inputs": {
+            "number": {
+              "ref": "step_output",
+              "step": "add_numbers",
+              "path": "/result"
+            }
+          },
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "result": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "result"
+            ],
+            "additionalProperties": false
+          },
+          "type": "tool",
+          "tool": {
+            "id": "toolret-square-toolink-tool-226",
+            "version": "1.0.0"
+          }
+        },
+        {
+          "id": "gcd_result",
+          "description": "对平方结果与 modulus 求最大公约数",
+          "required": true,
+          "inputs": {
+            "a": {
+              "ref": "step_output",
+              "step": "square_sum",
+              "path": "/result"
+            },
+            "b": {
+              "ref": "flow_input",
+              "path": "/modulus"
+            }
+          },
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "result": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "result"
+            ],
+            "additionalProperties": false
+          },
+          "type": "tool",
+          "tool": {
+            "id": "toolret-gcd-toolink-tool-587",
+            "version": "1.0.0"
+          }
+        }
+      ],
+      "transitions": [
+        {
+          "type": "next",
+          "id": "t1",
+          "from": "add_numbers",
+          "to": "square_sum"
+        },
+        {
+          "type": "next",
+          "id": "t2",
+          "from": "square_sum",
+          "to": "gcd_result"
+        }
+      ],
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "result": {
+          "ref": "step_output",
+          "step": "gcd_result",
+          "path": "/result"
+        }
+      }
+    },
+    "id": "toolret-node-chain",
+    "source_hash": "sha256:6b032b6eed8ede7abb16c3ac7596d5ce2ed2e342175bb2ad09d80736842c7b4d",
+    "version": "1.0.0"
+  },
+  "frozen_schema_version": 1,
+  "input": {
+    "hash": "sha256:4b62283c5a5da071a39edc69fb0725f7cf49c5e2a8897fc51d6040cd4e62b5f1",
+    "value": {
+      "a": 7,
+      "b": 5,
+      "modulus": 30
+    }
+  },
+  "profiles": {
+    "compiler": {
+      "name": "rhetra-compiler",
+      "version": "0.1.0"
+    },
+    "resolver": {
+      "name": "rhetra-resolver",
+      "version": "0.1.0"
+    },
+    "runtime": {
+      "name": "rhetra-runtime",
+      "version": "0.1.0",
+      "langgraph": "1.2.7"
+    },
+    "validator": {
+      "name": "rhetra-validator",
+      "version": "0.1.0"
+    }
+  },
+  "resources": {
+    "add_numbers": {
+      "selector": {
+        "id": "toolret-gcd-toolink-tool-587",
+        "version": "1.0.0"
+      },
+      "resolved": {
+        "kind": "tool",
+        "id": "toolret-gcd-toolink-tool-587",
+        "version": "1.0.0",
+        "contract": {
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "a": {
+                "type": "integer"
+              },
+              "b": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "a",
+              "b"
+            ],
+            "additionalProperties": false
+          },
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "result": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "result"
+            ],
+            "additionalProperties": false
+          },
+          "effect_class": "none",
+          "idempotency": "idempotent"
+        },
+        "config": {
+          "toolret_id": "toolink_tool_587",
+          "documentation_sha256": "05d4a2cc3b15979a1392829664294586f669d688f4be8675f33cbbc8dfe63446"
+        },
+        "secret_refs": [],
+        "implementation": "toolret-local:toolink_tool_587",
+        "content_hash": "sha256:b271af6dc636445ff91815187364a8df7a0e3fcf36f9f7a7f994d17bf98b274f",
+        "contract_hash": "sha256:0c52f6cde807ebb2bf0c6f4e29eb3c9ef7cae735e7dc8c66ddd7dc81aa90b869",
+        "config_hash": "sha256:ceb5911c516be1523b702e79372521f7807928fd0dd3837e2232af572ace232a"
+      }
+    },
+    "gcd_result": {
+      "selector": {
+        "id": "toolret-gcd-toolink-tool-587",
+        "version": "1.0.0"
+      },
+      "resolved": {
+        "kind": "tool",
+        "id": "toolret-gcd-toolink-tool-587",
+        "version": "1.0.0",
+        "contract": {
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "a": {
+                "type": "integer"
+              },
+              "b": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "a",
+              "b"
+            ],
+            "additionalProperties": false
+          },
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "result": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "result"
+            ],
+            "additionalProperties": false
+          },
+          "effect_class": "none",
+          "idempotency": "idempotent"
+        },
+        "config": {
+          "toolret_id": "toolink_tool_587",
+          "documentation_sha256": "05d4a2cc3b15979a1392829664294586f669d688f4be8675f33cbbc8dfe63446"
+        },
+        "secret_refs": [],
+        "implementation": "toolret-local:toolink_tool_587",
+        "content_hash": "sha256:b271af6dc636445ff91815187364a8df7a0e3fcf36f9f7a7f994d17bf98b274f",
+        "contract_hash": "sha256:0c52f6cde807ebb2bf0c6f4e29eb3c9ef7cae735e7dc8c66ddd7dc81aa90b869",
+        "config_hash": "sha256:ceb5911c516be1523b702e79372521f7807928fd0dd3837e2232af572ace232a"
+      }
+    },
+    "square_sum": {
+      "selector": {
+        "id": "toolret-square-toolink-tool-226",
+        "version": "1.0.0"
+      },
+      "resolved": {
+        "kind": "tool",
+        "id": "toolret-square-toolink-tool-226",
+        "version": "1.0.0",
+        "contract": {
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "number": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "number"
+            ],
+            "additionalProperties": false
+          },
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "result": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "result"
+            ],
+            "additionalProperties": false
+          },
+          "effect_class": "none",
+          "idempotency": "idempotent"
+        },
+        "config": {
+          "toolret_id": "toolink_tool_226",
+          "documentation_sha256": "85638e41614937a882de81381be82638b054074717719fa87340507568078c15"
+        },
+        "secret_refs": [],
+        "implementation": "toolret-local:toolink_tool_226",
+        "content_hash": "sha256:156934c2711def6c2dc07909de7e39a10cc9392ee2f3c73ca402f9d44c53d214",
+        "contract_hash": "sha256:ae1cb4ad954008c0fbd5fa21820a94d30c22fe534cc6b9918e3e52e9e931b156",
+        "config_hash": "sha256:8975975f53a2dd91fae705b2dfdcaae702b228b2c9e46325bb76775711a61114"
+      }
+    }
+  },
+  "frozen_execution_hash": "sha256:1ac6ea9b35020941de7d994c960997a8a6478bd2bc3b0bc4facf97433b09c72e"
+}

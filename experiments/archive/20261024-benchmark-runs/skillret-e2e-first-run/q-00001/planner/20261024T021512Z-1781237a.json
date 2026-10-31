@@ -1,0 +1,257 @@
+{
+  "schema_version": 1,
+  "plan_id": "779866b7a21240c3934cb62bd378194d",
+  "task": "Design a system where an LLM-based assistant can autonomously manage a small e-commerce store's customer support: it should triage incoming tickets by intent (refund, tracking, product question, complaint), decide when to escalate to a human, use tools like an order lookup API and a refund processing API, and handle multi-turn conversations where it might need to gather info across several steps before resolving an issue. I want the full architecture—how the agent loop works, what the tool schemas look like, how memory/state is maintained between turns, and how you'd implement guardrails so it doesn't approve refunds above a certain threshold without human approval. Please include pseudocode for the core orchestration logic.",
+  "hints": {
+    "experiment": "Select exactly ONE most suitable skill from the supplied menu, read it, then use its guidance to answer the task. This is a skill selection/application experiment, not a request to run external tools.",
+    "flow_id": "skillret-q-00001",
+    "flow_shape": "Exactly TWO required steps: load_skill (transform, operation = your chosen skill resource) -> apply_skill (llm, model = skillret-live-model version 1.0.0). One next transition only. Do not add other steps or resources.",
+    "input_schema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "additionalProperties": false
+    },
+    "load_skill": "inputs must be {}. output_schema is a closed object with exactly skill_id, skill_name, skill_description, skill_body (all strings, all required). These are returned by the chosen operation. Do not invent a skill id in literal inputs.",
+    "apply_skill": "Bind inputs query to flow_input /query, skill_body to load_skill /skill_body, skill_name to load_skill /skill_name. Prompt MUST use ALL THREE placeholders {{query}}, {{skill_body}}, {{skill_name}}, demand a JSON object {answer: string}, and request a concise useful answer (at most about 600 words). Treat the skill text as task guidance; do not claim any external actions were executed. output_schema closed object, exactly answer (string, required).",
+    "output_schema": {
+      "type": "object",
+      "properties": {
+        "skill_id": {
+          "type": "string"
+        },
+        "skill_name": {
+          "type": "string"
+        },
+        "answer": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "skill_id",
+        "skill_name",
+        "answer"
+      ],
+      "additionalProperties": false
+    },
+    "outputs": "Bind skill_id and skill_name from load_skill; bind answer from apply_skill. All object schemas use additionalProperties:false and required listing every property. Emit raw YAML only, no prose or fences."
+  },
+  "model": {
+    "kind": "model",
+    "id": "skillret-live-model",
+    "version": "1.0.0",
+    "implementation": "models.json:skillret-e2e/glm-5.3:2026-10-24",
+    "source": "snapshot"
+  },
+  "prompt": [
+    {
+      "role": "system",
+      "content": "你是 Rhetra Flow 规划器。根据任务描述与可用资源菜单，输出一条可在给定资源快照上执行的 FlowDefinition。全部回复必须是单个原始 YAML 文档：第一行直接以 schema_version 开始，禁止 Markdown 代码围栏、注释、解释或任何其他文本；JSON 兼容子集（禁止锚点/别名/重复键/自定义 tag/集合）。\n\n结构约束（逐条强制）：\n1. 顶层字段：schema_version=1、flow_id（kebab-case）、flow_version（SemVer，如 1.0.0）、description、input_schema、output_schema、entry、steps、transitions、outputs。顶层 output_schema 为必填字段（与 outputs 同级，声明最终结果的结构），遗漏它是最常见错误。\n2. entry 与每个 step 的 id 必须匹配 ^[a-z0-9]+(_[a-z0-9]+)*$（snake_case）。\n3. 每个 step 必须有 type 字段，取值只能是 llm、tool、transform 三者之一；选择器字段随 type 定：type=llm 用 model、type=tool 用 tool、type=transform 用 operation；选择器值引用菜单中的资源 id 与版本约束，如 {id: <菜单id>, version: <菜单version>}。\n4. 每个 step 必须有 description（非空字符串）、required（true/false）、inputs（每项形如 {ref: flow_input, path: /路径} 或 {ref: step_output, step: <步id>, path: /路径} 或字面量 {value: ...}或互斥分支取值 {one_of: [{ref: step_output, step: <步id>, path: /路径}, ...]}——命中任一可解析来源即取该值）、output_schema（JSON Schema 对象）。\n5. transitions 每个 {type: next|fork|join|merge|switch, id, from, to...}；串行用 next；fork 的 to 是数组；join 的 from 是数组且 fork 字段指回 fork id。transitions 至少 1 条：任务再简单也要拆成两步（如 提取 → 组装输出）用 next 串联，不允许零 transition 的 Flow。\n6. outputs：每项形如 {ref: step_output, step: <步id>, path: /路径}。顶层 outputs 不得用普通引用取 switch 分支臂内的 step（它在未选中的臂上会被跳过，导致输出无法解析）；需要臂内结果时用 one_of 逐臂列出，或先经 merge 汇出到臂外 step 再引用该臂外 step。\n7. 顶层 input_schema/output_schema 与每个 step 的 output_schema 的根必须是封闭对象：type: object 加 additionalProperties: false 加 required 数组列出全部属性名。\n8. type=llm 的 prompt 消息文本用双花括号占位符 {{名字}}（连续两个花括号，不是单个）引用输入，占位符名必须与该步 inputs 声明的输入名逐一对应；不得出现未声明的占位符；宁缺勿滥——只声明 prompt 中实际以 {{名字}} 引用的输入，声明了却未引用即违规。\n9. 位于 switch 分支臂内的 step 必须用 required: false（未选中的臂会被合法跳过，required: true 会因可被成功路径绕过而不合法）；不要从某一分支臂内的 step 向臂外 step 建立绑定，臂外 step 的 inputs 也不得用普通引用取臂内 step（两个方向都禁止）；臂外步骤要读臂内结果，唯一合法形式是 one_of 逐臂列出，或经 merge 汇出后引用臂外 step。\n10. 互斥合流 merge 的 from 必须一一覆盖其 switch 的全部 case 目标与 default 目标，不得遗漏任何一臂；switch 与 merge 必须配对使用。\n\n骨架示例（字段名与形态必须严格一致；尖括号占位换成菜单中真实存在的 id/version）：\nschema_version: 1\nflow_id: example-flow\nflow_version: 1.0.0\ndescription: 示例\ninput_schema: {type: object}\noutput_schema: {type: object, additionalProperties: false, required: [result]}\nentry: step_one\nsteps:\n  - id: step_one\n    type: transform\n    description: 提取\n    required: true\n    inputs: {incident: {ref: flow_input, path: /incident}}\n    output_schema: {type: object}\n    operation: {id: <菜单operation的id>, version: <其version>}\n  - id: step_two\n    type: tool\n    description: 查询\n    required: true\n    inputs: {city: {ref: step_output, step: step_one, path: /city}}\n    output_schema: {type: object}\n    tool: {id: <菜单tool的id>, version: <其version>}\n  - id: step_three\n    type: llm\n    description: 生成建议\n    required: true\n    inputs: {facts: {ref: step_output, step: step_two, path: /facts}}\n    output_schema: {type: object}\n    model: {id: <菜单中 kind=model 的 id>, version: <其version>}\n    prompt:\n      - role: system\n        content: 你是规划助手。\n      - role: user\n        content: 基于事实 {{facts}} 给出建议。\ntransitions:\n  - {type: next, id: t1, from: step_one, to: step_two}\n  - {type: next, id: t2, from: step_two, to: step_three}\noutputs: {result: {ref: step_output, step: step_three, path: /result}}\n\n如需条件分支，完整范例如下（要点：共享输入在 switch 前的步骤取好；分支臂内步骤 required: false；merge 一一覆盖全部 case 目标与 default 目标；合流后的臂外步骤用 one_of 读任一臂输出；顶层 outputs 只引用臂外步骤。when 是谓词对象，left 取上游输出用 {ref: source_output, path: /路径}，常量用 {value: ...}）：\nschema_version: 1\nflow_id: branch-example\nflow_version: 1.0.0\ndescription: 条件分支范例\ninput_schema: {type: object, properties: {mode: {type: string}, context: {type: string}}, required: [mode, context], additionalProperties: false}\noutput_schema: {type: object, properties: {report: {type: string}}, required: [report], additionalProperties: false}\nentry: check_mode\nsteps:\n  - id: check_mode\n    type: llm\n    description: 回显模式\n    required: true\n    inputs: {mode: {ref: flow_input, path: /mode}}\n    output_schema: {type: object, properties: {mode: {type: string}}, required: [mode], additionalProperties: false}\n    model: {id: <菜单中 kind=model 的 id>, version: <其version>}\n    prompt:\n      - role: system\n        content: 只输出 JSON 对象。\n      - role: user\n        content: 'mode={{mode}}'\n  - id: urgent_arm\n    type: llm\n    description: 紧急分支\n    required: false\n    inputs: {context: {ref: flow_input, path: /context}}\n    output_schema: {type: object, properties: {report: {type: string}}, required: [report], additionalProperties: false}\n    model: {id: <菜单中 kind=model 的 id>, version: <其version>}\n    prompt:\n      - role: system\n        content: 只输出 JSON 对象。\n      - role: user\n        content: '紧急处置：{{context}}'\n  - id: normal_arm\n    type: llm\n    description: 常规分支\n    required: false\n    inputs: {context: {ref: flow_input, path: /context}}\n    output_schema: {type: object, properties: {report: {type: string}}, required: [report], additionalProperties: false}\n    model: {id: <菜单中 kind=model 的 id>, version: <其version>}\n    prompt:\n      - role: system\n        content: 只输出 JSON 对象。\n      - role: user\n        content: '例行处理：{{context}}'\n  - id: finalize\n    type: transform\n    description: 合流后组装\n    required: true\n    inputs: {report: {one_of: [{ref: step_output, step: urgent_arm, path: /report}, {ref: step_output, step: normal_arm, path: /report}]}}\n    output_schema: {type: object, properties: {report: {type: string}}, required: [report], additionalProperties: false}\n    operation: {id: <菜单operation的id>, version: <其version>}\ntransitions:\n  - {type: switch, id: route, from: check_mode, cases: [{id: is_urgent, when: {op: eq, left: {ref: source_output, path: /mode}, right: {value: urgent}}, to: urgent_arm}], default: normal_arm}\n  - {type: merge, id: after_route, switch: route, from: [urgent_arm, normal_arm], to: finalize}\noutputs: {report: {ref: step_output, step: finalize, path: /report}}\n禁止使用本骨架与结构约束之外的字段名或结构变体。"
+    },
+    {
+      "role": "user",
+      "content": "## 任务\nDesign a system where an LLM-based assistant can autonomously manage a small e-commerce store's customer support: it should triage incoming tickets by intent (refund, tracking, product question, complaint), decide when to escalate to a human, use tools like an order lookup API and a refund processing API, and handle multi-turn conversations where it might need to gather info across several steps before resolving an issue. I want the full architecture—how the agent loop works, what the tool schemas look like, how memory/state is maintained between turns, and how you'd implement guardrails so it doesn't approve refunds above a certain threshold without human approval. Please include pseudocode for the core orchestration logic.\n\n## 可用资源菜单（JSON）\n[{\"id\": \"skill-904b70b5-2b8c-4996-9f39-ad0cae17f3ac\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Process customer refunds quickly. Search by order number or email, view order details, and issue full/partial refunds with automatic customer notifications. Use for customer support, order issues, or goodwill refunds. Triggers on \\\"refund\\\", \\\"issue refund\\\", \\\"process refund\\\", \\\"customer wants refund\\\", or similar queries.\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"904b70b5-2b8c-4996-9f39-ad0cae17f3ac\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"refund-order\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-7f06b2fa-3d64-4c98-99f8-9c5471d3132f\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"LangGraph development for stateful multi-agent applications, cyclic workflows, conditional routing, human-in-the-loop patterns, and persistent state management. Use for complex AI orchestration, agent coordination, and production-grade agentic systems.\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"7f06b2fa-3d64-4c98-99f8-9c5471d3132f\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"building-langgraph-agents\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-a09e4d91-66d6-493a-9336-cad842a45744\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Integrate PayPal payment processing with support for express checkout, subscriptions, and refund management. Use when implementing PayPal payments, processing online transactions, or building e-commerce checkout flows.\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"a09e4d91-66d6-493a-9336-cad842a45744\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"paypal-integration\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-851e4a58-a61a-4eaa-af7e-b4b7fefd01c1\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Frozen plans with human approval gates.\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"851e4a58-a61a-4eaa-af7e-b4b7fefd01c1\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"plan-then-execute\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-83e3d174-b223-420d-a27d-5b08ea72004c\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"GitHub issue-based swarm coordination for intelligent task decomposition and progress tracking. Use for transforming issues into multi-agent tasks, automated triage, task breakdown, and issue lifecycle management.\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"83e3d174-b223-420d-a27d-5b08ea72004c\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"github-swarm-issue\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-7f72c6de-5c49-43c7-91b1-c5b6cbeb47bd\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Design and implement multi-agent workflows with LangGraph 0.2+ - state management, supervisor-worker patterns, conditional routing, and fault-tolerant checkpointing\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"7f72c6de-5c49-43c7-91b1-c5b6cbeb47bd\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"langgraph-workflows\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-15238809-fd15-4616-bca6-5b620d221cc4\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Core implementation logic for working on a single GitHub issue. Used by both /work command and /work-all subagents to ensure consistent behavior.\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"15238809-fd15-4616-bca6-5b620d221cc4\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"work-issue\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-225c8268-65fc-444e-8bf1-8cb38bb01029\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Run diagnostic scripts in sandbox with human approval (MCP tool)\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"225c8268-65fc-444e-8bf1-8cb38bb01029\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"shannot\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-45ac0cab-8bbd-4da4-b84a-c0feb102d422\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Guide users through building a custom customer support automation skill for their company. Walks through planning integrations, writing scripts for their support stack (Zendesk, HelpScout, Intercom, etc.), creating response templates, and setting up an automated triage workflow. Use when users want to create their own support automation.\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"45ac0cab-8bbd-4da4-b84a-c0feb102d422\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"customer-support-builder\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-797e7117-434a-4f6a-a0fa-de326988a2b9\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Comprehensive memory storage system for AI employees in IT companies who communicate via Slack. Automatically classifies and stores diverse information types (Slack messages, Confluence docs, emails, meetings, projects, decisions, feedback) in an organized folder structure with efficient indexing and retrieval. Use when managing or searching employee memory, storing conversations, documenting decisions, tracking projects, or organizing any work-related information.\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"797e7117-434a-4f6a-a0fa-de326988a2b9\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"slack-memory-store\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-c805f1db-aaa2-43bf-97d4-8f911dabd668\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"State machines using Spatie Model States for complex state transitions. Use when working with complex state management, state transitions, or when user mentions state machines, Spatie Model States, state transitions, transition validation.\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"c805f1db-aaa2-43bf-97d4-8f911dabd668\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"laravel-state-machines\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-57ca9c6b-c2c3-446a-b695-09f824efc80d\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Patterns and architectures for building AI agents and workflows with LLMs. Use when designing systems that involve tool use, multi-step reasoning, autonomous decision-making, or orchestration of LLM-driven tasks.\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"57ca9c6b-c2c3-446a-b695-09f824efc80d\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"agents\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-d33731ab-89f8-437a-8ddc-34ed5d6c2d15\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Transform vague ideas into implementation-ready specifications through structured interviewing. Use when user describes a new feature/product idea, has a problem to solve, needs to document requirements, or says things like \\\"å¸®ææ¢³çéæ±\\\", \\\"interview me about this\\\", \\\"ç»åè¿ä¸ªæ³æ³\\\", \\\"spec out this project\\\". Produces two artifacts - intent.md (technical spec for code agents) and overview.md (human-friendly summary for team).\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"d33731ab-89f8-437a-8ddc-34ed5d6c2d15\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"intent-interview\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-474930d9-74cd-494d-bfb1-8fa1ca7a77f2\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Add persistent memory to AI coding agents — file-based, vector, and semantic search memory systems that survive between sessions. Use when a user asks to \\\"remember this\\\", \\\"add memory to my agent\\\", \\\"persist context between sessions\\\", \\\"build a knowledge base for my agent\\\", \\\"set up agent memory\\\", or \\\"make my AI remember things\\\". Covers file-based memory (MEMORY.md), SQLite with embeddings, vector databases (ChromaDB, Pinecone), semantic search, memory consolidation, and automatic context injection.\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"474930d9-74cd-494d-bfb1-8fa1ca7a77f2\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"agent-memory\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-49145d34-9ea8-4075-83a7-ffe815bec890\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Gerencia persistencia de contexto, decisoes e learnings do projeto.\\nArmazena e recupera informacoes entre sessoes para manter continuidade.\\nUse quando: salvar decisoes, recuperar contexto, persistir learnings.\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"49145d34-9ea8-4075-83a7-ffe815bec890\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"memory-manager\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-61c24c03-0b49-405c-ab15-dab90fd1191f\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Production-grade AI agent patterns with MCP integration, agentic RAG, handoff orchestration, multi-layer guardrails, and observability (modern best practices)\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"61c24c03-0b49-405c-ab15-dab90fd1191f\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"ai-agents\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-635e7d77-4252-4e52-8007-25d7b158f461\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Orchestrates multi-agent AI systems with task delegation, agent communication, shared memory, and workflow coordination. Use when users request \\\"multi-agent system\\\", \\\"agent orchestration\\\", \\\"AI agents\\\", \\\"agent coordination\\\", or \\\"autonomous agents\\\".\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"635e7d77-4252-4e52-8007-25d7b158f461\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"ai-agent-orchestrator\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-7d5df49f-62e6-4118-a80e-d71430c3f416\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Comprehensive guide for building meshes in TX V4. Covers SDK-based worker architecture, agent design, prompt templates, message protocols, and HITL workflows. Use when creating new meshes, defining agent roles, or debugging multi-agent systems.\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"7d5df49f-62e6-4118-a80e-d71430c3f416\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"mesh-builder\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-62a454a1-3f14-4edc-a03c-f1c2597c021c\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Persistent task workflow with state machine. Every message MUST announce state. Uses .claude/ files for multi-session continuity. Never use TodoWrite. Never auto-advance tasks.\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"62a454a1-3f14-4edc-a03c-f1c2597c021c\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"session-continuity\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skill-d0534a79-e58a-4ab0-899e-c03bab055e03\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"required\": [], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"skill_body\": {\"type\": \"string\"}, \"skill_description\": {\"const\": \"Guides architectural decisions for LangGraph applications. Use when deciding between LangGraph vs alternatives, choosing state management strategies, designing multi-agent systems, or selecting persistence and streaming approaches.\", \"type\": \"string\"}, \"skill_id\": {\"const\": \"d0534a79-e58a-4ab0-899e-c03bab055e03\", \"type\": \"string\"}, \"skill_name\": {\"const\": \"langgraph-architecture\", \"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"skill_description\", \"skill_body\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}, {\"id\": \"skillret-live-model\", \"input_schema\": {\"additionalProperties\": true, \"type\": \"object\"}, \"kind\": \"model\", \"output_schema\": {\"additionalProperties\": true, \"type\": \"object\"}, \"secret_refs\": [\"ZHIPU_API_KEY\"], \"version\": \"1.0.0\"}]\n\n## 补充要求（hints）\n{\"apply_skill\": \"Bind inputs query to flow_input /query, skill_body to load_skill /skill_body, skill_name to load_skill /skill_name. Prompt MUST use ALL THREE placeholders {{query}}, {{skill_body}}, {{skill_name}}, demand a JSON object {answer: string}, and request a concise useful answer (at most about 600 words). Treat the skill text as task guidance; do not claim any external actions were executed. output_schema closed object, exactly answer (string, required).\", \"experiment\": \"Select exactly ONE most suitable skill from the supplied menu, read it, then use its guidance to answer the task. This is a skill selection/application experiment, not a request to run external tools.\", \"flow_id\": \"skillret-q-00001\", \"flow_shape\": \"Exactly TWO required steps: load_skill (transform, operation = your chosen skill resource) -> apply_skill (llm, model = skillret-live-model version 1.0.0). One next transition only. Do not add other steps or resources.\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {\"query\": {\"type\": \"string\"}}, \"required\": [\"query\"], \"type\": \"object\"}, \"load_skill\": \"inputs must be {}. output_schema is a closed object with exactly skill_id, skill_name, skill_description, skill_body (all strings, all required). These are returned by the chosen operation. Do not invent a skill id in literal inputs.\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"answer\": {\"type\": \"string\"}, \"skill_id\": {\"type\": \"string\"}, \"skill_name\": {\"type\": \"string\"}}, \"required\": [\"skill_id\", \"skill_name\", \"answer\"], \"type\": \"object\"}, \"outputs\": \"Bind skill_id and skill_name from load_skill; bind answer from apply_skill. All object schemas use additionalProperties:false and required listing every property. Emit raw YAML only, no prose or fences.\"}\n"
+    },
+    {
+      "role": "user",
+      "content": "第 1 次草案无效（adapter_error）：transport 失败：RateLimitError: Error code: 429 - {'error': {'code': '1310', 'message': '您已达到每周/每月使用上限，您的限额将在 2026-10-25 18:01:16 重置。'}}。请修正后重新输出完整 YAML 文档。"
+    },
+    {
+      "role": "user",
+      "content": "第 2 次草案无效（adapter_error）：transport 失败：RateLimitError: Error code: 429 - {'error': {'code': '1310', 'message': '您已达到每周/每月使用上限，您的限额将在 2026-10-25 18:01:16 重置。'}}。请修正后重新输出完整 YAML 文档。"
+    },
+    {
+      "role": "user",
+      "content": "第 3 次草案无效（adapter_error）：transport 失败：RateLimitError: Error code: 429 - {'error': {'code': '1310', 'message': '您已达到每周/每月使用上限，您的限额将在 2026-10-25 18:01:16 重置。'}}。请修正后重新输出完整 YAML 文档。"
+    }
+  ],
+  "retrieval": {
+    "mode": "retriever",
+    "candidates": [
+      {
+        "kind": "operation",
+        "id": "skill-904b70b5-2b8c-4996-9f39-ad0cae17f3ac",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-7f06b2fa-3d64-4c98-99f8-9c5471d3132f",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-a09e4d91-66d6-493a-9336-cad842a45744",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-851e4a58-a61a-4eaa-af7e-b4b7fefd01c1",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-83e3d174-b223-420d-a27d-5b08ea72004c",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-7f72c6de-5c49-43c7-91b1-c5b6cbeb47bd",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-15238809-fd15-4616-bca6-5b620d221cc4",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-225c8268-65fc-444e-8bf1-8cb38bb01029",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-45ac0cab-8bbd-4da4-b84a-c0feb102d422",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-797e7117-434a-4f6a-a0fa-de326988a2b9",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-c805f1db-aaa2-43bf-97d4-8f911dabd668",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-57ca9c6b-c2c3-446a-b695-09f824efc80d",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-d33731ab-89f8-437a-8ddc-34ed5d6c2d15",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-474930d9-74cd-494d-bfb1-8fa1ca7a77f2",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-49145d34-9ea8-4075-83a7-ffe815bec890",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-61c24c03-0b49-405c-ab15-dab90fd1191f",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-635e7d77-4252-4e52-8007-25d7b158f461",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-7d5df49f-62e6-4118-a80e-d71430c3f416",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-62a454a1-3f14-4edc-a03c-f1c2597c021c",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "skill-d0534a79-e58a-4ab0-899e-c03bab055e03",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "model",
+        "id": "skillret-live-model",
+        "version": "1.0.0"
+      }
+    ]
+  },
+  "attempts": [
+    {
+      "seq": 1,
+      "response": {
+        "content": null,
+        "content_type": "NoneType",
+        "transport_status": "error",
+        "error": "RateLimitError: Error code: 429 - {'error': {'code': '1310', 'message': '您已达到每周/每月使用上限，您的限额将在 2026-10-25 18:01:16 重置。'}}",
+        "error_type": "adapter_failed",
+        "usage": {
+          "source": "none",
+          "total_tokens": 0
+        }
+      },
+      "valid": false,
+      "errors": [
+        {
+          "code": "adapter_error",
+          "message": "transport 失败：RateLimitError: Error code: 429 - {'error': {'code': '1310', 'message': '您已达到每周/每月使用上限，您的限额将在 2026-10-25 18:01:16 重置。'}}"
+        }
+      ]
+    },
+    {
+      "seq": 2,
+      "response": {
+        "content": null,
+        "content_type": "NoneType",
+        "transport_status": "error",
+        "error": "RateLimitError: Error code: 429 - {'error': {'code': '1310', 'message': '您已达到每周/每月使用上限，您的限额将在 2026-10-25 18:01:16 重置。'}}",
+        "error_type": "adapter_failed",
+        "usage": {
+          "source": "none",
+          "total_tokens": 0
+        }
+      },
+      "valid": false,
+      "errors": [
+        {
+          "code": "adapter_error",
+          "message": "transport 失败：RateLimitError: Error code: 429 - {'error': {'code': '1310', 'message': '您已达到每周/每月使用上限，您的限额将在 2026-10-25 18:01:16 重置。'}}"
+        }
+      ]
+    },
+    {
+      "seq": 3,
+      "response": {
+        "content": null,
+        "content_type": "NoneType",
+        "transport_status": "error",
+        "error": "RateLimitError: Error code: 429 - {'error': {'code': '1310', 'message': '您已达到每周/每月使用上限，您的限额将在 2026-10-25 18:01:16 重置。'}}",
+        "error_type": "adapter_failed",
+        "usage": {
+          "source": "none",
+          "total_tokens": 0
+        }
+      },
+      "valid": false,
+      "errors": [
+        {
+          "code": "adapter_error",
+          "message": "transport 失败：RateLimitError: Error code: 429 - {'error': {'code': '1310', 'message': '您已达到每周/每月使用上限，您的限额将在 2026-10-25 18:01:16 重置。'}}"
+        }
+      ]
+    }
+  ],
+  "retry_limit": 3,
+  "adopted": null,
+  "terminal_stage": "planning",
+  "error": {
+    "stage": "planning",
+    "code": "retry_exhausted",
+    "message": "3 轮草案全部无效：第1轮[adapter_error] transport 失败：RateLimitError: Error code: 429 - {'error': {'code': '1310', 'message': '您已达到每周/每月使用上限，您的限额将在 2026-10-25 18:01:16 重置。'}}；第2轮[adapter_error] transport 失败：RateLimitError: Error code: 429 - {'error': {'code': '1310', 'message': '您已达到每周/每月使用上限，您的限额将在 2026-10-25 18:01:16 重置。'}}；第3轮[adapter_error] transport 失败：RateLimitError: Error code: 429 - {'error': {'code': '1310', 'message': '您已达到每周/每月使用上限，您的限额将在 2026-10-25 18:01:16 重置。'}}"
+  }
+}

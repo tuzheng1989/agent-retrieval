@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "C:\Users\tuzhe\runspace\rhetra-harness\scripts\skillret_retrieval_e2e.py", line 310, in main
+    facts, definition = run_live_case(query, snapshot, retriever, case_output, golds[query["id"]])
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\tuzhe\runspace\rhetra-harness\scripts\skillret_retrieval_e2e.py", line 182, in run_live_case
+    definition = plan_flow(
+                 ^^^^^^^^^^
+  File "C:\Users\tuzhe\runspace\rhetra-harness\rhetra\planner\core.py", line 602, in plan_flow
+    raise _fail(
+rhetra.planner.core.PlannerError: [retry_exhausted] planner/planning: 3 轮草案全部无效：第1轮[adapter_error] transport 失败：RateLimitError: Error code: 429 - {'error': {'code': '1310', 'message': '您已达到每周/每月使用上限，您的限额将在 2026-10-25 18:01:16 重置。'}}；第2轮[adapter_error] transport 失败：RateLimitError: Error code: 429 - {'error': {'code': '1310', 'message': '您已达到每周/每月使用上限，您的限额将在 2026-10-25 18:01:16 重置。'}}；第3轮[adapter_error] transport 失败：RateLimitError: Error code: 429 - {'error': {'code': '1310', 'message': '您已达到每周/每月使用上限，您的限额将在 2026-10-25 18:01:16 重置。'}}

@@ -1,0 +1,278 @@
+{
+  "compiled_plan_hash": "sha256:0afc2b401eb4fb3286f326a28eef2fb8a90f42c70d6e3b96f0f78f8f334c7e05",
+  "compiled_schema_version": 1,
+  "control_regions": {
+    "forks": {},
+    "switches": {}
+  },
+  "declared_topology": {
+    "definition": {
+      "description": "选择最合适的技能并用其指导回答前端设计任务",
+      "entry": "load_skill",
+      "flow_id": "skillret-q-00002",
+      "flow_version": "1.0.0",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "answer": {
+            "type": "string"
+          },
+          "skill_id": {
+            "type": "string"
+          },
+          "skill_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "answer",
+          "skill_id",
+          "skill_name"
+        ],
+        "type": "object"
+      },
+      "outputs": {
+        "answer": {
+          "path": "/answer",
+          "ref": "step_output",
+          "step": "apply_skill"
+        },
+        "skill_id": {
+          "path": "/skill_id",
+          "ref": "step_output",
+          "step": "load_skill"
+        },
+        "skill_name": {
+          "path": "/skill_name",
+          "ref": "step_output",
+          "step": "load_skill"
+        }
+      },
+      "schema_version": 1,
+      "steps": [
+        {
+          "description": "按技能指导生成回答",
+          "id": "apply_skill",
+          "inputs": {
+            "query": {
+              "path": "/query",
+              "ref": "flow_input"
+            },
+            "skill_body": {
+              "path": "/skill_body",
+              "ref": "step_output",
+              "step": "load_skill"
+            },
+            "skill_name": {
+              "path": "/skill_name",
+              "ref": "step_output",
+              "step": "load_skill"
+            }
+          },
+          "model": {
+            "id": "skillret-live-model",
+            "version": "1.0.0"
+          },
+          "output_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "answer": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "answer"
+            ],
+            "type": "object"
+          },
+          "prompt": [
+            {
+              "content": "你是一名资深前端工程师。只输出一个 JSON 对象，形如 {\"answer\": string}。回答简洁实用，最多约 600 词。技能文本仅作为任务指导，不得声称执行了任何外部操作。",
+              "role": "system"
+            },
+            {
+              "content": "技能名称：{{skill_name}}\\n技能指导：{{skill_body}}\\n任务：{{query}}",
+              "role": "user"
+            }
+          ],
+          "required": true,
+          "type": "llm"
+        },
+        {
+          "description": "读取选定技能文本",
+          "id": "load_skill",
+          "inputs": {},
+          "operation": {
+            "id": "skill-3f032d2b-cf74-4988-9770-bc7923a16915",
+            "version": "1.0.0"
+          },
+          "output_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "skill_body": {
+                "type": "string"
+              },
+              "skill_description": {
+                "type": "string"
+              },
+              "skill_id": {
+                "type": "string"
+              },
+              "skill_name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "skill_body",
+              "skill_description",
+              "skill_id",
+              "skill_name"
+            ],
+            "type": "object"
+          },
+          "required": true,
+          "type": "transform"
+        }
+      ],
+      "transitions": [
+        {
+          "from": "load_skill",
+          "id": "t1",
+          "to": "apply_skill",
+          "type": "next"
+        }
+      ]
+    },
+    "entry": "load_skill",
+    "steps": [
+      "apply_skill",
+      "load_skill"
+    ],
+    "transitions": {
+      "t1": {
+        "from": "load_skill",
+        "to": "apply_skill",
+        "type": "next"
+      }
+    }
+  },
+  "finalization": {
+    "join_forks": {},
+    "merge_switches": {},
+    "output_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "answer": {
+          "type": "string"
+        },
+        "skill_id": {
+          "type": "string"
+        },
+        "skill_name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "skill_id",
+        "skill_name",
+        "answer"
+      ],
+      "type": "object"
+    },
+    "outputs": {
+      "answer": {
+        "path": "/answer",
+        "ref": "step_output",
+        "step": "apply_skill"
+      },
+      "skill_id": {
+        "path": "/skill_id",
+        "ref": "step_output",
+        "step": "load_skill"
+      },
+      "skill_name": {
+        "path": "/skill_name",
+        "ref": "step_output",
+        "step": "load_skill"
+      }
+    },
+    "terminals": [
+      "apply_skill"
+    ]
+  },
+  "frozen_execution_hash": "sha256:46820de585c98037d0f7220123e0c354846c1babfa01017b0548e88833ab510f",
+  "internal_nodes": {
+    "success_gates": {
+      "apply_skill": "__gate_apply_skill",
+      "load_skill": "__gate_load_skill"
+    },
+    "switch_controls": {}
+  },
+  "profiles": {
+    "compiler": {
+      "name": "rhetra-compiler",
+      "version": "0.1.0"
+    },
+    "resolver": {
+      "name": "rhetra-resolver",
+      "version": "0.1.0"
+    },
+    "runtime": {
+      "langgraph": "1.2.7",
+      "name": "rhetra-runtime",
+      "version": "0.1.0"
+    },
+    "validator": {
+      "name": "rhetra-validator",
+      "version": "0.1.0"
+    }
+  },
+  "source_map": {
+    "steps": {
+      "apply_skill": {
+        "gate": "__gate_apply_skill",
+        "node": "apply_skill"
+      },
+      "load_skill": {
+        "gate": "__gate_load_skill",
+        "node": "load_skill"
+      }
+    },
+    "transitions": {
+      "t1": {
+        "kind": "next",
+        "wiring": [
+          {
+            "from": "__gate_load_skill",
+            "kind": "edge",
+            "to": "apply_skill"
+          }
+        ]
+      }
+    }
+  },
+  "state_channels": {
+    "abort": "monotonic_first_wins",
+    "branch_choices": "merge_no_conflict",
+    "step_outcomes": "merge_no_conflict"
+  },
+  "wiring": [
+    {
+      "from": "__gate_load_skill",
+      "kind": "edge",
+      "to": "apply_skill"
+    }
+  ]
+}

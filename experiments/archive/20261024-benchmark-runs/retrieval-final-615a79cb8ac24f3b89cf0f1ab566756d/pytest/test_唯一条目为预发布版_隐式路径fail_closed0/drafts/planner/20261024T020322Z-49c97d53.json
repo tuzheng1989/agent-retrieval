@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "plan_id": "19dc188502054fe294cad403fe626113",
+  "task": "做一条最小流程",
+  "hints": null,
+  "model": null,
+  "prompt": null,
+  "retrieval": {
+    "mode": "all",
+    "candidates": null
+  },
+  "attempts": [],
+  "retry_limit": 3,
+  "adopted": null,
+  "terminal_stage": "model_resolution",
+  "error": {
+    "stage": "model_resolution",
+    "code": "model_resolve_failed",
+    "message": "快照唯一 kind=model 条目 t-model:2.0.0-rc.1 为预发布版，隐式选模不可用；请改用 plan_flow(planner_model='t-model') 显式指定"
+  }
+}

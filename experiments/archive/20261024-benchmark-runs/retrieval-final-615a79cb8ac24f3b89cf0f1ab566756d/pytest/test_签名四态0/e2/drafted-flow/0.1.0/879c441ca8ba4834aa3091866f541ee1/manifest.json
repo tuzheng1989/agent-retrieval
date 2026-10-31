@@ -1,0 +1,15 @@
+{
+  "artifact_set_hash": "sha256:2a03e6eae5bd1e399ef6941337d00edf6e414bd676e754dbf0583cf223171943",
+  "artifacts": [],
+  "bundle_schema_version": 1,
+  "compiled_plan_hash": "sha256:e7b27ec31e250ce4654528607973bc65b185338c6a6dc77084efd3a1c1df9149",
+  "files": {
+    "events.jsonl": "sha256:0188bc7619df565c09c02678bb68cccfe5d6089abc1ddaa06b2f83edb51de091",
+    "result.json": "sha256:c000b945a6e9dcc092492ff9a8e22de8116d4700fe55a78660bc40df18c925e9",
+    "frozen.json": "sha256:96f8f34bb6d361b3fb8c73462d383ed77891e9b63272dcd685161b7a87d39096",
+    "plan.json": "sha256:864b4a90433929204a28433377f2e4300bf3eded589bf2d4062172604b12d275"
+  },
+  "frozen_execution_hash": "sha256:109a019e789593ed2ce81ac0f57bb535a5e8fe69761d12b8125de7fbc96003bc",
+  "invocation_id": "879c441ca8ba4834aa3091866f541ee1",
+  "state": "finalized"
+}

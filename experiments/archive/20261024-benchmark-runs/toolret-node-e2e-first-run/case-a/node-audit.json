@@ -1,0 +1,137 @@
+{
+  "case": "case-a",
+  "input": {
+    "a": 7,
+    "b": 5,
+    "modulus": 30
+  },
+  "status": "completed",
+  "output": {
+    "result": 6
+  },
+  "audit": {
+    "verify": "finalized",
+    "passed": true,
+    "violations": [],
+    "nodes": [
+      {
+        "node": "add_numbers",
+        "expected_toolret_id": "toolink_tool_43",
+        "actual_resource_id": "toolret-add-toolink-tool-43",
+        "arguments": {
+          "a": 7,
+          "b": 5
+        },
+        "returned": {
+          "result": 12
+        },
+        "published": {
+          "result": 12
+        },
+        "step_execution_id": "se-ec87df309310",
+        "external_call_id": "c5e053285a9a4d489ea6cd188586d7b6",
+        "checks": {
+          "node": true,
+          "selector": true,
+          "called_tool": true,
+          "arguments": true,
+          "function_entry": true,
+          "function_result": true,
+          "returned_result": true,
+          "published_result": true,
+          "call_correlation": true,
+          "frozen_identity": true,
+          "transport": true
+        }
+      },
+      {
+        "node": "square_sum",
+        "expected_toolret_id": "toolink_tool_226",
+        "actual_resource_id": "toolret-square-toolink-tool-226",
+        "arguments": {
+          "number": 12
+        },
+        "returned": {
+          "result": 144
+        },
+        "published": {
+          "result": 144
+        },
+        "step_execution_id": "se-8e18510a8160",
+        "external_call_id": "9db09be18792444dbc89b2812c180daa",
+        "checks": {
+          "node": true,
+          "selector": true,
+          "called_tool": true,
+          "arguments": true,
+          "function_entry": true,
+          "function_result": true,
+          "returned_result": true,
+          "published_result": true,
+          "call_correlation": true,
+          "frozen_identity": true,
+          "transport": true
+        }
+      },
+      {
+        "node": "gcd_result",
+        "expected_toolret_id": "toolink_tool_587",
+        "actual_resource_id": "toolret-gcd-toolink-tool-587",
+        "arguments": {
+          "a": 144,
+          "b": 30
+        },
+        "returned": {
+          "result": 6
+        },
+        "published": {
+          "result": 6
+        },
+        "step_execution_id": "se-c811862236ed",
+        "external_call_id": "df180fac1a4743d980e4ac3ea68fd870",
+        "checks": {
+          "node": true,
+          "selector": true,
+          "called_tool": true,
+          "arguments": true,
+          "function_entry": true,
+          "function_result": true,
+          "returned_result": true,
+          "published_result": true,
+          "call_correlation": true,
+          "frozen_identity": true,
+          "transport": true
+        }
+      }
+    ],
+    "function_calls": [
+      {
+        "toolret_id": "toolink_tool_43",
+        "name": "add",
+        "args": {
+          "a": 7,
+          "b": 5
+        },
+        "result": 12
+      },
+      {
+        "toolret_id": "toolink_tool_226",
+        "name": "square",
+        "args": {
+          "number": 12
+        },
+        "result": 144
+      },
+      {
+        "toolret_id": "toolink_tool_587",
+        "name": "gcd",
+        "args": {
+          "a": 144,
+          "b": 30
+        },
+        "result": 6
+      }
+    ],
+    "bundle_dir": ".scratch\\toolret-node-e2e-first-run\\case-a\\toolret-node-chain\\1.0.0\\c6b903960a284e64927300d94b367535"
+  }
+}

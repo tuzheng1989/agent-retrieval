@@ -1,0 +1,149 @@
+{
+  "mutation": "add_numbers uses gcd instead of add",
+  "status": "completed",
+  "output": {
+    "result": 1
+  },
+  "audit": {
+    "verify": "finalized",
+    "passed": false,
+    "violations": [
+      "add_numbers: selector",
+      "add_numbers: called_tool",
+      "add_numbers: function_entry",
+      "add_numbers: function_result",
+      "add_numbers: returned_result",
+      "add_numbers: published_result",
+      "square_sum: arguments",
+      "square_sum: function_entry",
+      "square_sum: function_result",
+      "square_sum: returned_result",
+      "square_sum: published_result",
+      "gcd_result: arguments",
+      "gcd_result: function_entry",
+      "gcd_result: function_result",
+      "gcd_result: returned_result",
+      "gcd_result: published_result"
+    ],
+    "nodes": [
+      {
+        "node": "add_numbers",
+        "expected_toolret_id": "toolink_tool_43",
+        "actual_resource_id": "toolret-gcd-toolink-tool-587",
+        "arguments": {
+          "a": 7,
+          "b": 5
+        },
+        "returned": {
+          "result": 1
+        },
+        "published": {
+          "result": 1
+        },
+        "step_execution_id": "se-f1f7dd570ccc",
+        "external_call_id": "06d2f4ea063b442bae30e419b457b291",
+        "checks": {
+          "node": true,
+          "selector": false,
+          "called_tool": false,
+          "arguments": true,
+          "function_entry": false,
+          "function_result": false,
+          "returned_result": false,
+          "published_result": false,
+          "call_correlation": true,
+          "frozen_identity": true,
+          "transport": true
+        }
+      },
+      {
+        "node": "square_sum",
+        "expected_toolret_id": "toolink_tool_226",
+        "actual_resource_id": "toolret-square-toolink-tool-226",
+        "arguments": {
+          "number": 1
+        },
+        "returned": {
+          "result": 1
+        },
+        "published": {
+          "result": 1
+        },
+        "step_execution_id": "se-1a7037e8fbb6",
+        "external_call_id": "dfbc541a302b49fe93827a91e0da81d4",
+        "checks": {
+          "node": true,
+          "selector": true,
+          "called_tool": true,
+          "arguments": false,
+          "function_entry": false,
+          "function_result": false,
+          "returned_result": false,
+          "published_result": false,
+          "call_correlation": true,
+          "frozen_identity": true,
+          "transport": true
+        }
+      },
+      {
+        "node": "gcd_result",
+        "expected_toolret_id": "toolink_tool_587",
+        "actual_resource_id": "toolret-gcd-toolink-tool-587",
+        "arguments": {
+          "a": 1,
+          "b": 30
+        },
+        "returned": {
+          "result": 1
+        },
+        "published": {
+          "result": 1
+        },
+        "step_execution_id": "se-6179cdcfc570",
+        "external_call_id": "72074654877e406b87ddc9cbd1599865",
+        "checks": {
+          "node": true,
+          "selector": true,
+          "called_tool": true,
+          "arguments": false,
+          "function_entry": false,
+          "function_result": false,
+          "returned_result": false,
+          "published_result": false,
+          "call_correlation": true,
+          "frozen_identity": true,
+          "transport": true
+        }
+      }
+    ],
+    "function_calls": [
+      {
+        "toolret_id": "toolink_tool_587",
+        "name": "gcd",
+        "args": {
+          "a": 7,
+          "b": 5
+        },
+        "result": 1
+      },
+      {
+        "toolret_id": "toolink_tool_226",
+        "name": "square",
+        "args": {
+          "number": 1
+        },
+        "result": 1
+      },
+      {
+        "toolret_id": "toolink_tool_587",
+        "name": "gcd",
+        "args": {
+          "a": 1,
+          "b": 30
+        },
+        "result": 1
+      }
+    ],
+    "bundle_dir": ".scratch\\toolret-node-e2e-first-run\\negative-wrong-tool\\toolret-node-chain\\1.0.0\\867b9acee0954b3fba685299e892079f"
+  }
+}

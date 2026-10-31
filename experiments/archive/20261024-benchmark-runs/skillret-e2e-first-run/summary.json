@@ -1,0 +1,68 @@
+{
+  "dataset": "SkillRet",
+  "revision": "a050ad2",
+  "source_file_sha256": {
+    "data_skills_test.jsonl": "1960453e422e4ba01977197580934ca3c02b2ac302dfa9c0d074707d961b7c81",
+    "data_queries_test.jsonl": "4d07a35f40e597f8468c6dab480c95a1f9b40ecbde80274081ba2e7c643d0f6d",
+    "data_qrels_test.jsonl": "edbfae0b8109de460d54e27e6235b1b47316f34956744db0571ad1b4ddb860af",
+    "docgen-skillret.jsonl": "45a991ba2446744ef6dce1e6a03de83bd89a7c54c9e71cd926a97d75099242da"
+  },
+  "source_dir": "C:\\Users\\tuzhe\\runspace\\agent-retrieval\\experiments\\benchmarks\\data",
+  "skill_pool": 6006,
+  "labeled_queries": 4392,
+  "sample_policy": "file-order prefix, no selection by label or ranking",
+  "sample_cases": 20,
+  "window": 20,
+  "model": "glm-5.3",
+  "retrieval": {
+    "plain": {
+      "metrics": {
+        "recall@5": 0.4583,
+        "completeness@5": 0.3,
+        "ndcg@5": 0.4788,
+        "recall@10": 0.4917,
+        "completeness@10": 0.3,
+        "ndcg@10": 0.4949,
+        "recall@20": 0.5417,
+        "completeness@20": 0.35,
+        "ndcg@20": 0.5132
+      },
+      "mean_seconds": 1.6278
+    },
+    "docgen": {
+      "metrics": {
+        "recall@5": 0.5667,
+        "completeness@5": 0.4,
+        "ndcg@5": 0.5898,
+        "recall@10": 0.6833,
+        "completeness@10": 0.5,
+        "ndcg@10": 0.6294,
+        "recall@20": 0.8667,
+        "completeness@20": 0.7,
+        "ndcg@20": 0.6818
+      },
+      "mean_seconds": 4.0004
+    }
+  },
+  "live": [
+    {
+      "query_id": "q-00001",
+      "status": "failed",
+      "error_type": "PlannerError",
+      "error": "[retry_exhausted] planner/planning: 3 轮草案全部无效：第1轮[adapter_error] transport 失败：RateLimitError: Error code: 429 - {'error': {'code': '1310', 'message': '您已达到每周/每月使用上限，您的限额将在 2026-10-25 18:01:16 重置。'}}；第2轮[adapter_error] transport 失败：RateLimitError: Error code: 429 - {'error': {'code': '1310', 'message': '您已达到每周/每月使用上限，您的限额将在 2026-10-25 18:01:16 重置。'}}；第3轮[adapter_error] transport 失败：RateLimitError: Error code: 429 - {'error': {'code': '1310', 'message': '您已达到每周/每月使用上限，您的限额将在 2026-10-25 18:01:16 重置。'}}"
+    },
+    {
+      "query_id": "q-00002",
+      "status": "failed",
+      "error_type": "PlannerError",
+      "error": "[retry_exhausted] planner/planning: 3 轮草案全部无效：第1轮[adapter_error] transport 失败：RateLimitError: Error code: 429 - {'error': {'code': '1310', 'message': '您已达到每周/每月使用上限，您的限额将在 2026-10-25 18:01:16 重置。'}}；第2轮[adapter_error] transport 失败：RateLimitError: Error code: 429 - {'error': {'code': '1310', 'message': '您已达到每周/每月使用上限，您的限额将在 2026-10-25 18:01:16 重置。'}}；第3轮[adapter_error] transport 失败：RateLimitError: Error code: 429 - {'error': {'code': '1310', 'message': '您已达到每周/每月使用上限，您的限额将在 2026-10-25 18:01:16 重置。'}}"
+    },
+    {
+      "query_id": "q-00003",
+      "status": "failed",
+      "error_type": "PlannerError",
+      "error": "[retry_exhausted] planner/planning: 3 轮草案全部无效：第1轮[adapter_error] transport 失败：RateLimitError: Error code: 429 - {'error': {'code': '1310', 'message': '您已达到每周/每月使用上限，您的限额将在 2026-10-25 18:01:16 重置。'}}；第2轮[adapter_error] transport 失败：RateLimitError: Error code: 429 - {'error': {'code': '1310', 'message': '您已达到每周/每月使用上限，您的限额将在 2026-10-25 18:01:16 重置。'}}；第3轮[adapter_error] transport 失败：RateLimitError: Error code: 429 - {'error': {'code': '1310', 'message': '您已达到每周/每月使用上限，您的限额将在 2026-10-25 18:01:16 重置。'}}"
+    }
+  ],
+  "scope": "Skill declaration/body loading and real LLM text generation; no skill scripts or external business tools are executed. No semantic judge of generated answers."
+}

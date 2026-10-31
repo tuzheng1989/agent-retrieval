@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "plan_id": "6b871abe58e04185a289eb9ca2255560",
+  "task": "做一条最小流程",
+  "hints": null,
+  "model": {
+    "kind": "model",
+    "id": "t-model",
+    "version": "1.0.0",
+    "implementation": "t-model-impl",
+    "source": "snapshot"
+  },
+  "prompt": null,
+  "retrieval": {
+    "mode": "retriever",
+    "candidates": null
+  },
+  "attempts": [],
+  "retry_limit": 3,
+  "adopted": null,
+  "terminal_stage": "retrieval",
+  "error": {
+    "stage": "retrieval",
+    "code": "retrieval_invalid_result",
+    "message": "检索结果必须是 ResourceCandidate 可迭代对象"
+  }
+}

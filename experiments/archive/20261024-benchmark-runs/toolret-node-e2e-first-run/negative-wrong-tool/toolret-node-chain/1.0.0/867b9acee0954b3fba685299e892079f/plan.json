@@ -1,0 +1,293 @@
+{
+  "compiled_plan_hash": "sha256:7a1d95ba43118e4bcbaf45f9cd7387093c4ae9a74693176e74e17361163ae178",
+  "compiled_schema_version": 1,
+  "control_regions": {
+    "forks": {},
+    "switches": {}
+  },
+  "declared_topology": {
+    "definition": {
+      "description": "add → square → gcd 链式工具调用",
+      "entry": "add_numbers",
+      "flow_id": "toolret-node-chain",
+      "flow_version": "1.0.0",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "a": {
+            "type": "integer"
+          },
+          "b": {
+            "type": "integer"
+          },
+          "modulus": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "a",
+          "b",
+          "modulus"
+        ],
+        "type": "object"
+      },
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "result": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      },
+      "outputs": {
+        "result": {
+          "path": "/result",
+          "ref": "step_output",
+          "step": "gcd_result"
+        }
+      },
+      "schema_version": 1,
+      "steps": [
+        {
+          "description": "计算输入 a 与 b 的和",
+          "id": "add_numbers",
+          "inputs": {
+            "a": {
+              "path": "/a",
+              "ref": "flow_input"
+            },
+            "b": {
+              "path": "/b",
+              "ref": "flow_input"
+            }
+          },
+          "output_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "result": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "result"
+            ],
+            "type": "object"
+          },
+          "required": true,
+          "tool": {
+            "id": "toolret-gcd-toolink-tool-587",
+            "version": "1.0.0"
+          },
+          "type": "tool"
+        },
+        {
+          "description": "对平方结果与 modulus 求最大公约数",
+          "id": "gcd_result",
+          "inputs": {
+            "a": {
+              "path": "/result",
+              "ref": "step_output",
+              "step": "square_sum"
+            },
+            "b": {
+              "path": "/modulus",
+              "ref": "flow_input"
+            }
+          },
+          "output_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "result": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "result"
+            ],
+            "type": "object"
+          },
+          "required": true,
+          "tool": {
+            "id": "toolret-gcd-toolink-tool-587",
+            "version": "1.0.0"
+          },
+          "type": "tool"
+        },
+        {
+          "description": "对 add 的实际结果求平方",
+          "id": "square_sum",
+          "inputs": {
+            "number": {
+              "path": "/result",
+              "ref": "step_output",
+              "step": "add_numbers"
+            }
+          },
+          "output_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "result": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "result"
+            ],
+            "type": "object"
+          },
+          "required": true,
+          "tool": {
+            "id": "toolret-square-toolink-tool-226",
+            "version": "1.0.0"
+          },
+          "type": "tool"
+        }
+      ],
+      "transitions": [
+        {
+          "from": "add_numbers",
+          "id": "t1",
+          "to": "square_sum",
+          "type": "next"
+        },
+        {
+          "from": "square_sum",
+          "id": "t2",
+          "to": "gcd_result",
+          "type": "next"
+        }
+      ]
+    },
+    "entry": "add_numbers",
+    "steps": [
+      "add_numbers",
+      "gcd_result",
+      "square_sum"
+    ],
+    "transitions": {
+      "t1": {
+        "from": "add_numbers",
+        "to": "square_sum",
+        "type": "next"
+      },
+      "t2": {
+        "from": "square_sum",
+        "to": "gcd_result",
+        "type": "next"
+      }
+    }
+  },
+  "finalization": {
+    "join_forks": {},
+    "merge_switches": {},
+    "output_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "result": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "result"
+      ],
+      "type": "object"
+    },
+    "outputs": {
+      "result": {
+        "path": "/result",
+        "ref": "step_output",
+        "step": "gcd_result"
+      }
+    },
+    "terminals": [
+      "gcd_result"
+    ]
+  },
+  "frozen_execution_hash": "sha256:1ac6ea9b35020941de7d994c960997a8a6478bd2bc3b0bc4facf97433b09c72e",
+  "internal_nodes": {
+    "success_gates": {
+      "add_numbers": "__gate_add_numbers",
+      "gcd_result": "__gate_gcd_result",
+      "square_sum": "__gate_square_sum"
+    },
+    "switch_controls": {}
+  },
+  "profiles": {
+    "compiler": {
+      "name": "rhetra-compiler",
+      "version": "0.1.0"
+    },
+    "resolver": {
+      "name": "rhetra-resolver",
+      "version": "0.1.0"
+    },
+    "runtime": {
+      "langgraph": "1.2.7",
+      "name": "rhetra-runtime",
+      "version": "0.1.0"
+    },
+    "validator": {
+      "name": "rhetra-validator",
+      "version": "0.1.0"
+    }
+  },
+  "source_map": {
+    "steps": {
+      "add_numbers": {
+        "gate": "__gate_add_numbers",
+        "node": "add_numbers"
+      },
+      "gcd_result": {
+        "gate": "__gate_gcd_result",
+        "node": "gcd_result"
+      },
+      "square_sum": {
+        "gate": "__gate_square_sum",
+        "node": "square_sum"
+      }
+    },
+    "transitions": {
+      "t1": {
+        "kind": "next",
+        "wiring": [
+          {
+            "from": "__gate_add_numbers",
+            "kind": "edge",
+            "to": "square_sum"
+          }
+        ]
+      },
+      "t2": {
+        "kind": "next",
+        "wiring": [
+          {
+            "from": "__gate_square_sum",
+            "kind": "edge",
+            "to": "gcd_result"
+          }
+        ]
+      }
+    }
+  },
+  "state_channels": {
+    "abort": "monotonic_first_wins",
+    "branch_choices": "merge_no_conflict",
+    "step_outcomes": "merge_no_conflict"
+  },
+  "wiring": [
+    {
+      "from": "__gate_add_numbers",
+      "kind": "edge",
+      "to": "square_sum"
+    },
+    {
+      "from": "__gate_square_sum",
+      "kind": "edge",
+      "to": "gcd_result"
+    }
+  ]
+}

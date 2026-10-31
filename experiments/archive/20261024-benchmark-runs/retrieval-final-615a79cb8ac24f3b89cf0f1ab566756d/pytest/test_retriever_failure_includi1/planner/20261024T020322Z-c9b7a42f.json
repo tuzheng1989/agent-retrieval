@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "plan_id": "b8830cb381434127ae54b120b3fcb19c",
+  "task": "做一条最小流程",
+  "hints": null,
+  "model": {
+    "kind": "model",
+    "id": "t-model",
+    "version": "1.0.0",
+    "implementation": "t-model-impl",
+    "source": "snapshot"
+  },
+  "prompt": null,
+  "retrieval": {
+    "mode": "retriever",
+    "candidates": null
+  },
+  "attempts": [],
+  "retry_limit": 3,
+  "adopted": null,
+  "terminal_stage": "retrieval",
+  "error": {
+    "stage": "retrieval",
+    "code": "retrieval_failed",
+    "message": "资源检索失败：retrieval unavailable"
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "method": "offline fresh-process audit; no model requests",
+  "cases": [
+    {
+      "query_id": "q-00001",
+      "selected_skill_id": "57ca9c6b-c2c3-446a-b695-09f824efc80d",
+      "selected_is_gold": true,
+      "source_body_equals_published_body": true,
+      "full_body_in_rendered_prompt": true,
+      "original_query_in_rendered_prompt": true,
+      "body_sha256": "fd06157bdb28fdfc329aa961a967918678c379a7c5f9f26baa5fdf26374478d8",
+      "selected_is_in_retrieval_menu": true,
+      "definition_hash_matches": true,
+      "verify": "finalized"
+    },
+    {
+      "query_id": "q-00002",
+      "selected_skill_id": "3f032d2b-cf74-4988-9770-bc7923a16915",
+      "selected_is_gold": true,
+      "source_body_equals_published_body": true,
+      "full_body_in_rendered_prompt": true,
+      "original_query_in_rendered_prompt": true,
+      "body_sha256": "bbb829f3afb4e2dcab9e2b4df15bfaa39bb4116c7138b6917e92e377cc97ae83",
+      "selected_is_in_retrieval_menu": true,
+      "definition_hash_matches": true,
+      "verify": "finalized"
+    },
+    {
+      "query_id": "q-00003",
+      "selected_skill_id": "8a9f1da2-d38a-489a-ab21-b8fb6c3567fb",
+      "selected_is_gold": true,
+      "source_body_equals_published_body": true,
+      "full_body_in_rendered_prompt": true,
+      "original_query_in_rendered_prompt": true,
+      "body_sha256": "d61e8ded016c309b970861176f9e3eec37b20a6011aeda0bacae3e47bfee6539",
+      "selected_is_in_retrieval_menu": true,
+      "definition_hash_matches": true,
+      "verify": "finalized"
+    }
+  ]
+}

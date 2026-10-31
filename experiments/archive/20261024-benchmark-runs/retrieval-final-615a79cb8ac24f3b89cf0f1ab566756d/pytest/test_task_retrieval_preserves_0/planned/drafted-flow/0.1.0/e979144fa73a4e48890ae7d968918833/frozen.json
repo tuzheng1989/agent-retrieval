@@ -1,0 +1,387 @@
+{
+  "authorization": {
+    "grants": {
+      "step_a": {
+        "action": "invoke",
+        "argument_contract_hash": "sha256:3defb42aa4492c2d85e6fdf2b173423e9382380e2cc47d101de307afa3df2b2c",
+        "max_attempts": 1,
+        "resource": {
+          "kind": "operation",
+          "id": "t-op",
+          "version": "1.0.0",
+          "content_hash": "sha256:79dc6949d97b69ea1147904b698f46030778b2bdd6acd168de8c5a23b81bb682",
+          "contract_hash": "sha256:3defb42aa4492c2d85e6fdf2b173423e9382380e2cc47d101de307afa3df2b2c"
+        }
+      },
+      "step_b": {
+        "action": "invoke",
+        "argument_contract_hash": "sha256:3defb42aa4492c2d85e6fdf2b173423e9382380e2cc47d101de307afa3df2b2c",
+        "max_attempts": 1,
+        "resource": {
+          "kind": "operation",
+          "id": "t-op",
+          "version": "1.0.0",
+          "content_hash": "sha256:79dc6949d97b69ea1147904b698f46030778b2bdd6acd168de8c5a23b81bb682",
+          "contract_hash": "sha256:3defb42aa4492c2d85e6fdf2b173423e9382380e2cc47d101de307afa3df2b2c"
+        }
+      }
+    },
+    "source": {
+      "id": "resource-snapshot",
+      "hash": "sha256:81822e8babe3995310a1f67bbd2938c396d9925e6968d31f8145ed89e56ef048"
+    },
+    "subject": {
+      "kind": "standalone"
+    }
+  },
+  "constraints": {
+    "deadline_seconds": 600.0,
+    "max_llm_calls": 32,
+    "max_output_tokens": 8192,
+    "max_tool_calls": 32
+  },
+  "evidence_policy": {
+    "business_input": "full",
+    "diagnostics": "full",
+    "model_response": "full",
+    "prompt": "full",
+    "stream": "full",
+    "tool_request": "full",
+    "tool_response": "full"
+  },
+  "flow": {
+    "definition": {
+      "description": "planner 草案（最小双 transform 链）",
+      "entry": "step_a",
+      "flow_id": "drafted-flow",
+      "flow_version": "0.1.0",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "text": {
+          "path": "/text",
+          "ref": "step_output",
+          "step": "step_b"
+        }
+      },
+      "schema_version": 1,
+      "steps": [
+        {
+          "description": "透传",
+          "id": "step_a",
+          "inputs": {
+            "text": {
+              "path": "/text",
+              "ref": "flow_input"
+            }
+          },
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "required": true,
+          "type": "transform",
+          "operation": {
+            "id": "t-op",
+            "version": "1.0.0"
+          }
+        },
+        {
+          "description": "透传",
+          "id": "step_b",
+          "inputs": {
+            "text": {
+              "path": "/text",
+              "ref": "step_output",
+              "step": "step_a"
+            }
+          },
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "required": true,
+          "type": "transform",
+          "operation": {
+            "id": "t-op",
+            "version": "1.0.0"
+          }
+        }
+      ],
+      "transitions": [
+        {
+          "id": "a_to_b",
+          "type": "next",
+          "from": "step_a",
+          "to": "step_b"
+        }
+      ]
+    },
+    "definition_hash": "sha256:fa6ec4f4fab0e4f116dfb22bb68c859a08c52f1a2f184d806cbc10dddc82da4a",
+    "definition_raw": {
+      "schema_version": 1,
+      "flow_id": "drafted-flow",
+      "flow_version": "0.1.0",
+      "description": "planner 草案（最小双 transform 链）",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "additionalProperties": false
+      },
+      "entry": "step_a",
+      "steps": [
+        {
+          "id": "step_a",
+          "description": "透传",
+          "required": true,
+          "inputs": {
+            "text": {
+              "ref": "flow_input",
+              "path": "/text"
+            }
+          },
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "type": "transform",
+          "operation": {
+            "id": "t-op",
+            "version": "1.0.0"
+          }
+        },
+        {
+          "id": "step_b",
+          "description": "透传",
+          "required": true,
+          "inputs": {
+            "text": {
+              "ref": "step_output",
+              "step": "step_a",
+              "path": "/text"
+            }
+          },
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "type": "transform",
+          "operation": {
+            "id": "t-op",
+            "version": "1.0.0"
+          }
+        }
+      ],
+      "transitions": [
+        {
+          "type": "next",
+          "id": "a_to_b",
+          "from": "step_a",
+          "to": "step_b"
+        }
+      ],
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "text": {
+          "ref": "step_output",
+          "step": "step_b",
+          "path": "/text"
+        }
+      }
+    },
+    "id": "drafted-flow",
+    "source_hash": "sha256:3348095787031bd01c394ac645cf0faffabefcb706f7377869de9c14ea9a2aec",
+    "version": "0.1.0"
+  },
+  "frozen_schema_version": 1,
+  "input": {
+    "hash": "sha256:52605492750713a1991a23cf9bae7907a3c32f2b7fd31f64df9837340c8028d3",
+    "value": {
+      "text": "hi"
+    }
+  },
+  "profiles": {
+    "compiler": {
+      "name": "rhetra-compiler",
+      "version": "0.1.0"
+    },
+    "resolver": {
+      "name": "rhetra-resolver",
+      "version": "0.1.0"
+    },
+    "runtime": {
+      "name": "rhetra-runtime",
+      "version": "0.1.0",
+      "langgraph": "1.2.7"
+    },
+    "validator": {
+      "name": "rhetra-validator",
+      "version": "0.1.0"
+    }
+  },
+  "resources": {
+    "step_a": {
+      "selector": {
+        "id": "t-op",
+        "version": "1.0.0"
+      },
+      "resolved": {
+        "kind": "operation",
+        "id": "t-op",
+        "version": "1.0.0",
+        "contract": {
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "effect_class": null,
+          "idempotency": null
+        },
+        "config": {},
+        "secret_refs": [],
+        "implementation": "t-op-impl",
+        "content_hash": "sha256:79dc6949d97b69ea1147904b698f46030778b2bdd6acd168de8c5a23b81bb682",
+        "contract_hash": "sha256:3defb42aa4492c2d85e6fdf2b173423e9382380e2cc47d101de307afa3df2b2c",
+        "config_hash": "sha256:319ecb3b2ee9b94a33cdd645034f9018f260a6a904ddba9a848e82a7e231e25b"
+      }
+    },
+    "step_b": {
+      "selector": {
+        "id": "t-op",
+        "version": "1.0.0"
+      },
+      "resolved": {
+        "kind": "operation",
+        "id": "t-op",
+        "version": "1.0.0",
+        "contract": {
+          "input_schema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "effect_class": null,
+          "idempotency": null
+        },
+        "config": {},
+        "secret_refs": [],
+        "implementation": "t-op-impl",
+        "content_hash": "sha256:79dc6949d97b69ea1147904b698f46030778b2bdd6acd168de8c5a23b81bb682",
+        "contract_hash": "sha256:3defb42aa4492c2d85e6fdf2b173423e9382380e2cc47d101de307afa3df2b2c",
+        "config_hash": "sha256:319ecb3b2ee9b94a33cdd645034f9018f260a6a904ddba9a848e82a7e231e25b"
+      }
+    }
+  },
+  "frozen_execution_hash": "sha256:298196dfed6e6ab91978304f984b195daa4cf4d06807c20aabfdad0a609878de"
+}

@@ -1,0 +1,501 @@
+{
+  "authorization": {
+    "grants": {
+      "load_skill": {
+        "action": "invoke",
+        "argument_contract_hash": "sha256:522a7a97f761aad4ef57c3dfb350388d43009b67246bad6051a4b7646f4a06e3",
+        "max_attempts": 1,
+        "resource": {
+          "kind": "operation",
+          "id": "skill-57ca9c6b-c2c3-446a-b695-09f824efc80d",
+          "version": "1.0.0",
+          "content_hash": "sha256:958e5f60c71206ed58863030efbc0fd64619167e75275a71cd4cbb42bf592418",
+          "contract_hash": "sha256:522a7a97f761aad4ef57c3dfb350388d43009b67246bad6051a4b7646f4a06e3"
+        }
+      },
+      "apply_skill": {
+        "action": "invoke",
+        "argument_contract_hash": "sha256:e1751115ed8fb1890a246c39dfc433f992e2bcd6ab96ad45a5357ee91216e8e6",
+        "max_attempts": 1,
+        "resource": {
+          "kind": "model",
+          "id": "skillret-live-model",
+          "version": "1.0.0",
+          "content_hash": "sha256:a9da7bb40f68411ff2e049d6a28be5eaaa1988666f8e157d5e0912131caff307",
+          "contract_hash": "sha256:e1751115ed8fb1890a246c39dfc433f992e2bcd6ab96ad45a5357ee91216e8e6"
+        }
+      }
+    },
+    "source": {
+      "id": "resource-snapshot",
+      "hash": "sha256:078f84786f1f0eb8b0b5007f5084b2021c697acc3ae08019b6db214ceac53bf8"
+    },
+    "subject": {
+      "kind": "standalone"
+    }
+  },
+  "constraints": {
+    "deadline_seconds": 600.0,
+    "max_llm_calls": 32,
+    "max_output_tokens": 8192,
+    "max_tool_calls": 32
+  },
+  "evidence_policy": {
+    "business_input": "full",
+    "diagnostics": "full",
+    "model_response": "full",
+    "prompt": "full",
+    "stream": "full",
+    "tool_request": "full",
+    "tool_response": "full"
+  },
+  "flow": {
+    "definition": {
+      "description": "Load the agents skill and answer the e-commerce support agent architecture question.",
+      "entry": "load_skill",
+      "flow_id": "skillret-q-00001",
+      "flow_version": "1.0.0",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "answer": {
+            "type": "string"
+          },
+          "skill_id": {
+            "type": "string"
+          },
+          "skill_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "answer",
+          "skill_id",
+          "skill_name"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "answer": {
+          "path": "/answer",
+          "ref": "step_output",
+          "step": "apply_skill"
+        },
+        "skill_id": {
+          "path": "/skill_id",
+          "ref": "step_output",
+          "step": "load_skill"
+        },
+        "skill_name": {
+          "path": "/skill_name",
+          "ref": "step_output",
+          "step": "load_skill"
+        }
+      },
+      "schema_version": 1,
+      "steps": [
+        {
+          "description": "Answer the query using the skill body as task guidance.",
+          "id": "apply_skill",
+          "inputs": {
+            "query": {
+              "path": "/query",
+              "ref": "flow_input"
+            },
+            "skill_body": {
+              "path": "/skill_body",
+              "ref": "step_output",
+              "step": "load_skill"
+            },
+            "skill_name": {
+              "path": "/skill_name",
+              "ref": "step_output",
+              "step": "load_skill"
+            }
+          },
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "answer": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "answer"
+            ],
+            "additionalProperties": false
+          },
+          "required": true,
+          "type": "llm",
+          "model": {
+            "id": "skillret-live-model",
+            "version": "1.0.0"
+          },
+          "prompt": [
+            {
+              "content": "You are a helpful assistant. Treat the following skill text as task guidance only; do not claim any external actions were executed. Respond with a single JSON object of the form {\"answer\": string} and keep the answer concise and useful (at most about 600 words).",
+              "role": "system"
+            },
+            {
+              "content": "skill_name: {{skill_name}}",
+              "role": "user"
+            },
+            {
+              "content": "skill guidance: {{skill_body}}",
+              "role": "user"
+            },
+            {
+              "content": "Task: {{query}}",
+              "role": "user"
+            }
+          ]
+        },
+        {
+          "description": "Load the chosen agents skill resource.",
+          "id": "load_skill",
+          "inputs": {},
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "skill_id": {
+                "type": "string"
+              },
+              "skill_name": {
+                "type": "string"
+              },
+              "skill_description": {
+                "type": "string"
+              },
+              "skill_body": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "skill_body",
+              "skill_description",
+              "skill_id",
+              "skill_name"
+            ],
+            "additionalProperties": false
+          },
+          "required": true,
+          "type": "transform",
+          "operation": {
+            "id": "skill-57ca9c6b-c2c3-446a-b695-09f824efc80d",
+            "version": "1.0.0"
+          }
+        }
+      ],
+      "transitions": [
+        {
+          "id": "t1",
+          "type": "next",
+          "from": "load_skill",
+          "to": "apply_skill"
+        }
+      ]
+    },
+    "definition_hash": "sha256:8a98b934ee8e11601e5c3e4449633526fa5390694b04fa3bc848730c4ce6bbc9",
+    "definition_raw": {
+      "schema_version": 1,
+      "flow_id": "skillret-q-00001",
+      "flow_version": "1.0.0",
+      "description": "Load the agents skill and answer the e-commerce support agent architecture question.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "additionalProperties": false
+      },
+      "entry": "load_skill",
+      "steps": [
+        {
+          "id": "load_skill",
+          "description": "Load the chosen agents skill resource.",
+          "required": true,
+          "inputs": {},
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "skill_id": {
+                "type": "string"
+              },
+              "skill_name": {
+                "type": "string"
+              },
+              "skill_description": {
+                "type": "string"
+              },
+              "skill_body": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "skill_id",
+              "skill_name",
+              "skill_description",
+              "skill_body"
+            ],
+            "additionalProperties": false
+          },
+          "type": "transform",
+          "operation": {
+            "id": "skill-57ca9c6b-c2c3-446a-b695-09f824efc80d",
+            "version": "1.0.0"
+          }
+        },
+        {
+          "id": "apply_skill",
+          "description": "Answer the query using the skill body as task guidance.",
+          "required": true,
+          "inputs": {
+            "query": {
+              "ref": "flow_input",
+              "path": "/query"
+            },
+            "skill_body": {
+              "ref": "step_output",
+              "step": "load_skill",
+              "path": "/skill_body"
+            },
+            "skill_name": {
+              "ref": "step_output",
+              "step": "load_skill",
+              "path": "/skill_name"
+            }
+          },
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "answer": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "answer"
+            ],
+            "additionalProperties": false
+          },
+          "type": "llm",
+          "model": {
+            "id": "skillret-live-model",
+            "version": "1.0.0"
+          },
+          "prompt": [
+            {
+              "role": "system",
+              "content": "You are a helpful assistant. Treat the following skill text as task guidance only; do not claim any external actions were executed. Respond with a single JSON object of the form {\"answer\": string} and keep the answer concise and useful (at most about 600 words)."
+            },
+            {
+              "role": "user",
+              "content": "skill_name: {{skill_name}}"
+            },
+            {
+              "role": "user",
+              "content": "skill guidance: {{skill_body}}"
+            },
+            {
+              "role": "user",
+              "content": "Task: {{query}}"
+            }
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "type": "next",
+          "id": "t1",
+          "from": "load_skill",
+          "to": "apply_skill"
+        }
+      ],
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "answer": {
+            "type": "string"
+          },
+          "skill_id": {
+            "type": "string"
+          },
+          "skill_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "answer",
+          "skill_id",
+          "skill_name"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "answer": {
+          "ref": "step_output",
+          "step": "apply_skill",
+          "path": "/answer"
+        },
+        "skill_id": {
+          "ref": "step_output",
+          "step": "load_skill",
+          "path": "/skill_id"
+        },
+        "skill_name": {
+          "ref": "step_output",
+          "step": "load_skill",
+          "path": "/skill_name"
+        }
+      }
+    },
+    "id": "skillret-q-00001",
+    "source_hash": "sha256:9c77a4b312750c1aa5571a202fbc2140ac508a13f31a4b789d5d3096448833b7",
+    "version": "1.0.0"
+  },
+  "frozen_schema_version": 1,
+  "input": {
+    "hash": "sha256:1c01804abf0eb2117d0ea217ecd09db6f15cd5c13e004a547689101b91ebba7a",
+    "value": {
+      "query": "Design a system where an LLM-based assistant can autonomously manage a small e-commerce store's customer support: it should triage incoming tickets by intent (refund, tracking, product question, complaint), decide when to escalate to a human, use tools like an order lookup API and a refund processing API, and handle multi-turn conversations where it might need to gather info across several steps before resolving an issue. I want the full architecture—how the agent loop works, what the tool schemas look like, how memory/state is maintained between turns, and how you'd implement guardrails so it doesn't approve refunds above a certain threshold without human approval. Please include pseudocode for the core orchestration logic."
+    }
+  },
+  "profiles": {
+    "compiler": {
+      "name": "rhetra-compiler",
+      "version": "0.1.0"
+    },
+    "resolver": {
+      "name": "rhetra-resolver",
+      "version": "0.1.0"
+    },
+    "runtime": {
+      "name": "rhetra-runtime",
+      "version": "0.1.0",
+      "langgraph": "1.2.7"
+    },
+    "validator": {
+      "name": "rhetra-validator",
+      "version": "0.1.0"
+    }
+  },
+  "resources": {
+    "apply_skill": {
+      "selector": {
+        "id": "skillret-live-model",
+        "version": "1.0.0"
+      },
+      "resolved": {
+        "kind": "model",
+        "id": "skillret-live-model",
+        "version": "1.0.0",
+        "contract": {
+          "input_schema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "output_schema": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "effect_class": null,
+          "idempotency": null
+        },
+        "config": {
+          "api_base": "https://open.bigmodel.cn/api/coding/paas/v4",
+          "model_id": "glm-5.3-flash",
+          "timeout": 120,
+          "structured_output": true,
+          "streaming": true,
+          "stream_usage": true,
+          "extra_body": {
+            "thinking": {
+              "type": "disabled"
+            }
+          },
+          "limit": {
+            "output": 4096
+          }
+        },
+        "secret_refs": [
+          "ZHIPUAI_API_KEY"
+        ],
+        "implementation": "models.json:skillret-e2e/glm-5.3-flash:2026-10-24",
+        "content_hash": "sha256:a9da7bb40f68411ff2e049d6a28be5eaaa1988666f8e157d5e0912131caff307",
+        "contract_hash": "sha256:e1751115ed8fb1890a246c39dfc433f992e2bcd6ab96ad45a5357ee91216e8e6",
+        "config_hash": "sha256:f04e4aeff4b636489eeed355e0a289a1b7f4e00764bf88ef22ed26643fb5fc9d"
+      }
+    },
+    "load_skill": {
+      "selector": {
+        "id": "skill-57ca9c6b-c2c3-446a-b695-09f824efc80d",
+        "version": "1.0.0"
+      },
+      "resolved": {
+        "kind": "operation",
+        "id": "skill-57ca9c6b-c2c3-446a-b695-09f824efc80d",
+        "version": "1.0.0",
+        "contract": {
+          "input_schema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+            "additionalProperties": false
+          },
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "skill_id": {
+                "type": "string",
+                "const": "57ca9c6b-c2c3-446a-b695-09f824efc80d"
+              },
+              "skill_name": {
+                "type": "string",
+                "const": "agents"
+              },
+              "skill_description": {
+                "type": "string",
+                "const": "Patterns and architectures for building AI agents and workflows with LLMs. Use when designing systems that involve tool use, multi-step reasoning, autonomous decision-making, or orchestration of LLM-driven tasks."
+              },
+              "skill_body": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "skill_id",
+              "skill_name",
+              "skill_description",
+              "skill_body"
+            ],
+            "additionalProperties": false
+          },
+          "effect_class": null,
+          "idempotency": null
+        },
+        "config": {},
+        "secret_refs": [],
+        "implementation": "skillret-read:57ca9c6b-c2c3-446a-b695-09f824efc80d",
+        "content_hash": "sha256:958e5f60c71206ed58863030efbc0fd64619167e75275a71cd4cbb42bf592418",
+        "contract_hash": "sha256:522a7a97f761aad4ef57c3dfb350388d43009b67246bad6051a4b7646f4a06e3",
+        "config_hash": "sha256:319ecb3b2ee9b94a33cdd645034f9018f260a6a904ddba9a848e82a7e231e25b"
+      }
+    }
+  },
+  "frozen_execution_hash": "sha256:d449b9a6a6282eea3d9b2cba0b7b5f7af211291e7abb7c6f27b62503e08fddb5"
+}

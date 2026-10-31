@@ -1,0 +1,33 @@
+{
+  "conformance": {
+    "checks": {
+      "branch_choice_completeness": true,
+      "external_calls": 1,
+      "permits": 2,
+      "seq_max": 1385
+    },
+    "conformant": true,
+    "violations": []
+  },
+  "flow_output": {
+    "answer": "ARCHITECTURE: LLM CUSTOMER SUPPORT AGENT FOR E-COMMERCE\n\n1. HIGH-LEVEL DESIGN\nUse a hybrid: a workflow for triage (routing pattern) feeding an agent loop (ReAct-style) per conversation. Triage is deterministic enough to be a cheap classification call; resolution needs dynamic multi-step reasoning, so an agent handles it. Human-in-the-loop guardrails gate sensitive actions (large refunds, escalations).\n\nComponents:\n- Triage service: classifies intent -> {refund, tracking, product_question, complaint} and assigns priority\n- Agent runtime: autonomous loop with tools, per-conversation state, max-step and budget limits\n- Tool layer: order_lookup, refund_process, tracking_status, knowledge_base_search, escalate_to_human, reply_to_customer\n- State store: conversation state persisted per ticket (DB/Redis)\n- Guardrail layer: wraps tool execution with policy checks\n- Human queue: escalation handoff with full transcript + agent summary\n\n2. TRIAGE (WORKFLOW)\n\nasync def triage(ticket):\n    intent = await llm.generate(\n        f\"Classify into [refund, tracking, product_question, complaint].\\n{ticket.body}\")\n    priority = \"high\" if intent == \"complaint\" else \"normal\"\n    return route(intent, ticket)\n\nRouting is a dict lookup to per-intent system prompts (refund agent gets policy text; product_question agent gets KB search emphasis).\n\n3. AGENT LOOP (CORE ORCHESTRATION PSEUDOCODE)\n\nasync def run_agent(ticket, max_steps=8):\n    state = load_or_create_state(ticket.id)\n    messages = [\n        {\"role\": \"system\", \"content\": SYSTEM_PROMPT + POLICY_TEXT},\n        {\"role\": \"user\", \"content\": ticket.body},\n    ] + state.history\n\n    for step in range(max_steps):\n        resp = await llm.generate(messages, tools=TOOL_SCHEMAS)\n        messages.append(resp.as_message())\n\n        if not resp.tool_calls:\n            state.status = \"resolved\"\n            save_state(state, messages)\n            return resp.content  # final customer-facing reply\n\n        for call in resp.tool_calls:\n            result = await guarded_execute(call, state)   # guardrails here\n            messages.append({\"role\": \"tool\",\n                             \"tool_call_id\": call.id,\n                             \"content\": result})\n            save_state(state, messages)  # checkpoint every step\n\n    return await escalate(ticket, messages, reason=\"max_steps_reached\")\n\nasync def guarded_execute(call, state):\n    # Policy guardrail: refunds above threshold require human approval\n    if call.name == \"process_refund\":\n        amount = call.arguments[\"amount\"]\n        order = await order_lookup(call.arguments[\"order_id\"])\n        if not state.verified_customer:\n            return \"ERROR: verify customer identity first (email + order match)\"\n        if amount > REFUND_LIMIT:  # e.g. $50\n            req = await create_approval_request(call, state)\n            return (f\"ESCALATED: refund ${amount} exceeds limit. \"\n                    f\"Human approval pending (id={req.id}). Inform the customer.\")\n    if call.name == \"process_refund\" and state.refund_issued:\n        return \"ERROR: refund already issued for this ticket (idempotency guard)\"\n    try:\n        return await TOOLS[call.name].execute(**call.arguments)\n    except Exception as e:\n        return f\"Error: {e}\"  # errors as text so the LLM can recover\n\n4. TOOL SCHEMAS (JSON-schema style)\n\n- lookup_order(order_id?: string, email?: string)\n  \"Look up an order by ID, or match by customer email. Returns status, items, amounts, shipping/tracking info.\"\n- get_tracking(tracking_number: string)\n- search_knowledge_base(query: string, limit?: int)\n- process_refund(order_id: string, amount: number, reason: string)\n  \"Issues a refund. Requires verified customer. Amounts over the policy limit are escalated automatically.\"\n- escalate_to_human(ticket_id: string, summary: string, urgency: enum)\n- send_reply(ticket_id: string, message: string)  // customer-facing messages\n\nTool design rules: text-in/text-out, self-contained results, truncated outputs, errors returned as strings (never thrown) so the agent can reason and retry.\n\n5. MULTI-TURN MEMORY / STATE\nPersist a ConversationState per ticket:\n\nstate = {\n  ticket_id, intent, priority,\n  customer_verified: bool,        # set after lookup_order email match\n  order_id, refund_issued: bool,  # idempotency flags\n  pending_approvals: [ids],\n  history: [...],                 # full message transcript incl. tool results\n  step_count, token_spend\n}\n\nOn each new inbound message: load state, append user message, resume the loop (the transcript IS the working memory). Keep history truncated/summarized beyond ~20 turns to control tokens. The verified_customer and refund_issued flags live in state, not in the LLM's head—guardrails read them directly so prompt manipulation can't bypass policy.\n\n6. GUARDRAILS\n- Refund threshold: any process_refund above $50 auto-escalates via a pending human approval; the agent must tell the customer it's in progress\n- Identity verification required before any account-affecting tool\n- Idempotency: one refund per ticket/order\n- Hard limits: max_steps=8, token budget, per-ticket tool-call cap\n- Allowed-actions allowlist per intent (tracking agent can't call process_refund)\n- All actions logged; approval requests include transcript + agent summary for the human reviewer\n- Output filter on send_reply: block PII leakage and off-policy promises\n\n7. ESCALATION FLOW\nescalate() closes the agent loop, posts a summary (intent, actions taken, customer sentiment, suggested resolution) to the human queue, sets state.status='escalated', and pauses until the human resolves—new customer messages go straight to the human with agent-drafted suggested replies.",
+    "skill_id": "57ca9c6b-c2c3-446a-b695-09f824efc80d",
+    "skill_name": "agents"
+  },
+  "frozen_execution_hash": "sha256:d449b9a6a6282eea3d9b2cba0b7b5f7af211291e7abb7c6f27b62503e08fddb5",
+  "invocation_id": "f040e1c8e297419fa244c2d22670c95c",
+  "status": "completed",
+  "step_outcomes": {
+    "apply_skill": "completed",
+    "load_skill": "completed"
+  },
+  "usage_summary": {
+    "se-3f3ca9678b82": {
+      "calls": 1,
+      "sources": [
+        "provider"
+      ],
+      "tokens": 4019
+    }
+  }
+}

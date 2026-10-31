@@ -1,0 +1,46 @@
+{
+  "method": "fresh-process offline recheck of events, frozen definitions, outputs and saved function-entry logs",
+  "positive": [
+    {
+      "case": "case-a",
+      "nodes_passed": 3,
+      "verify": "finalized",
+      "definition_hash_matches": true,
+      "output": {
+        "result": 6
+      }
+    },
+    {
+      "case": "case-b",
+      "nodes_passed": 3,
+      "verify": "finalized",
+      "definition_hash_matches": true,
+      "output": {
+        "result": 15
+      }
+    }
+  ],
+  "negative": {
+    "status": "completed",
+    "verify": "finalized",
+    "node_audit_passed": false,
+    "violations": [
+      "add_numbers: selector",
+      "add_numbers: called_tool",
+      "add_numbers: function_entry",
+      "add_numbers: function_result",
+      "add_numbers: returned_result",
+      "add_numbers: published_result",
+      "square_sum: arguments",
+      "square_sum: function_entry",
+      "square_sum: function_result",
+      "square_sum: returned_result",
+      "square_sum: published_result",
+      "gcd_result: arguments",
+      "gcd_result: function_entry",
+      "gcd_result: function_result",
+      "gcd_result: returned_result",
+      "gcd_result: published_result"
+    ]
+  }
+}

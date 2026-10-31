@@ -1,0 +1,169 @@
+{
+  "schema_version": 1,
+  "plan_id": "ef1e02f59eac4ce997f420f570f394b4",
+  "task": "做一条最小流程",
+  "hints": {
+    "style": "最简"
+  },
+  "model": {
+    "kind": "model",
+    "id": "t-model",
+    "version": "1.0.0",
+    "implementation": "t-model-impl",
+    "source": "snapshot"
+  },
+  "prompt": [
+    {
+      "role": "system",
+      "content": "你是 Rhetra Flow 规划器。根据任务描述与可用资源菜单，输出一条可在给定资源快照上执行的 FlowDefinition。全部回复必须是单个原始 YAML 文档：第一行直接以 schema_version 开始，禁止 Markdown 代码围栏、注释、解释或任何其他文本；JSON 兼容子集（禁止锚点/别名/重复键/自定义 tag/集合）。\n\n结构约束（逐条强制）：\n1. 顶层字段：schema_version=1、flow_id（kebab-case）、flow_version（SemVer，如 1.0.0）、description、input_schema、output_schema、entry、steps、transitions、outputs。顶层 output_schema 为必填字段（与 outputs 同级，声明最终结果的结构），遗漏它是最常见错误。\n2. entry 与每个 step 的 id 必须匹配 ^[a-z0-9]+(_[a-z0-9]+)*$（snake_case）。\n3. 每个 step 必须有 type 字段，取值只能是 llm、tool、transform 三者之一；选择器字段随 type 定：type=llm 用 model、type=tool 用 tool、type=transform 用 operation；选择器值引用菜单中的资源 id 与版本约束，如 {id: <菜单id>, version: <菜单version>}。\n4. 每个 step 必须有 description（非空字符串）、required（true/false）、inputs（每项形如 {ref: flow_input, path: /路径} 或 {ref: step_output, step: <步id>, path: /路径} 或字面量 {value: ...}或互斥分支取值 {one_of: [{ref: step_output, step: <步id>, path: /路径}, ...]}——命中任一可解析来源即取该值）、output_schema（JSON Schema 对象）。\n5. transitions 每个 {type: next|fork|join|merge|switch, id, from, to...}；串行用 next；fork 的 to 是数组；join 的 from 是数组且 fork 字段指回 fork id。transitions 至少 1 条：任务再简单也要拆成两步（如 提取 → 组装输出）用 next 串联，不允许零 transition 的 Flow。\n6. outputs：每项形如 {ref: step_output, step: <步id>, path: /路径}。顶层 outputs 不得用普通引用取 switch 分支臂内的 step（它在未选中的臂上会被跳过，导致输出无法解析）；需要臂内结果时用 one_of 逐臂列出，或先经 merge 汇出到臂外 step 再引用该臂外 step。\n7. 顶层 input_schema/output_schema 与每个 step 的 output_schema 的根必须是封闭对象：type: object 加 additionalProperties: false 加 required 数组列出全部属性名。\n8. type=llm 的 prompt 消息文本用双花括号占位符 {{名字}}（连续两个花括号，不是单个）引用输入，占位符名必须与该步 inputs 声明的输入名逐一对应；不得出现未声明的占位符；宁缺勿滥——只声明 prompt 中实际以 {{名字}} 引用的输入，声明了却未引用即违规。\n9. 位于 switch 分支臂内的 step 必须用 required: false（未选中的臂会被合法跳过，required: true 会因可被成功路径绕过而不合法）；不要从某一分支臂内的 step 向臂外 step 建立绑定，臂外 step 的 inputs 也不得用普通引用取臂内 step（两个方向都禁止）；臂外步骤要读臂内结果，唯一合法形式是 one_of 逐臂列出，或经 merge 汇出后引用臂外 step。\n10. 互斥合流 merge 的 from 必须一一覆盖其 switch 的全部 case 目标与 default 目标，不得遗漏任何一臂；switch 与 merge 必须配对使用。\n\n骨架示例（字段名与形态必须严格一致；尖括号占位换成菜单中真实存在的 id/version）：\nschema_version: 1\nflow_id: example-flow\nflow_version: 1.0.0\ndescription: 示例\ninput_schema: {type: object}\noutput_schema: {type: object, additionalProperties: false, required: [result]}\nentry: step_one\nsteps:\n  - id: step_one\n    type: transform\n    description: 提取\n    required: true\n    inputs: {incident: {ref: flow_input, path: /incident}}\n    output_schema: {type: object}\n    operation: {id: <菜单operation的id>, version: <其version>}\n  - id: step_two\n    type: tool\n    description: 查询\n    required: true\n    inputs: {city: {ref: step_output, step: step_one, path: /city}}\n    output_schema: {type: object}\n    tool: {id: <菜单tool的id>, version: <其version>}\n  - id: step_three\n    type: llm\n    description: 生成建议\n    required: true\n    inputs: {facts: {ref: step_output, step: step_two, path: /facts}}\n    output_schema: {type: object}\n    model: {id: <菜单中 kind=model 的 id>, version: <其version>}\n    prompt:\n      - role: system\n        content: 你是规划助手。\n      - role: user\n        content: 基于事实 {{facts}} 给出建议。\ntransitions:\n  - {type: next, id: t1, from: step_one, to: step_two}\n  - {type: next, id: t2, from: step_two, to: step_three}\noutputs: {result: {ref: step_output, step: step_three, path: /result}}\n\n如需条件分支，完整范例如下（要点：共享输入在 switch 前的步骤取好；分支臂内步骤 required: false；merge 一一覆盖全部 case 目标与 default 目标；合流后的臂外步骤用 one_of 读任一臂输出；顶层 outputs 只引用臂外步骤。when 是谓词对象，left 取上游输出用 {ref: source_output, path: /路径}，常量用 {value: ...}）：\nschema_version: 1\nflow_id: branch-example\nflow_version: 1.0.0\ndescription: 条件分支范例\ninput_schema: {type: object, properties: {mode: {type: string}, context: {type: string}}, required: [mode, context], additionalProperties: false}\noutput_schema: {type: object, properties: {report: {type: string}}, required: [report], additionalProperties: false}\nentry: check_mode\nsteps:\n  - id: check_mode\n    type: llm\n    description: 回显模式\n    required: true\n    inputs: {mode: {ref: flow_input, path: /mode}}\n    output_schema: {type: object, properties: {mode: {type: string}}, required: [mode], additionalProperties: false}\n    model: {id: <菜单中 kind=model 的 id>, version: <其version>}\n    prompt:\n      - role: system\n        content: 只输出 JSON 对象。\n      - role: user\n        content: 'mode={{mode}}'\n  - id: urgent_arm\n    type: llm\n    description: 紧急分支\n    required: false\n    inputs: {context: {ref: flow_input, path: /context}}\n    output_schema: {type: object, properties: {report: {type: string}}, required: [report], additionalProperties: false}\n    model: {id: <菜单中 kind=model 的 id>, version: <其version>}\n    prompt:\n      - role: system\n        content: 只输出 JSON 对象。\n      - role: user\n        content: '紧急处置：{{context}}'\n  - id: normal_arm\n    type: llm\n    description: 常规分支\n    required: false\n    inputs: {context: {ref: flow_input, path: /context}}\n    output_schema: {type: object, properties: {report: {type: string}}, required: [report], additionalProperties: false}\n    model: {id: <菜单中 kind=model 的 id>, version: <其version>}\n    prompt:\n      - role: system\n        content: 只输出 JSON 对象。\n      - role: user\n        content: '例行处理：{{context}}'\n  - id: finalize\n    type: transform\n    description: 合流后组装\n    required: true\n    inputs: {report: {one_of: [{ref: step_output, step: urgent_arm, path: /report}, {ref: step_output, step: normal_arm, path: /report}]}}\n    output_schema: {type: object, properties: {report: {type: string}}, required: [report], additionalProperties: false}\n    operation: {id: <菜单operation的id>, version: <其version>}\ntransitions:\n  - {type: switch, id: route, from: check_mode, cases: [{id: is_urgent, when: {op: eq, left: {ref: source_output, path: /mode}, right: {value: urgent}}, to: urgent_arm}], default: normal_arm}\n  - {type: merge, id: after_route, switch: route, from: [urgent_arm, normal_arm], to: finalize}\noutputs: {report: {ref: step_output, step: finalize, path: /report}}\n禁止使用本骨架与结构约束之外的字段名或结构变体。"
+    },
+    {
+      "role": "user",
+      "content": "## 任务\n做一条最小流程\n\n## 可用资源菜单（JSON）\n[{\"id\": \"t-model\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {}, \"type\": \"object\"}, \"kind\": \"model\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {}, \"type\": \"object\"}, \"secret_refs\": [\"T_MODEL_API_KEY\"], \"version\": \"1.0.0\"}, {\"id\": \"t-op\", \"input_schema\": {\"additionalProperties\": false, \"properties\": {\"text\": {\"type\": \"string\"}}, \"required\": [\"text\"], \"type\": \"object\"}, \"kind\": \"operation\", \"output_schema\": {\"additionalProperties\": false, \"properties\": {\"text\": {\"type\": \"string\"}}, \"required\": [\"text\"], \"type\": \"object\"}, \"secret_refs\": [], \"version\": \"1.0.0\"}]\n\n## 补充要求（hints）\n{\"style\": \"最简\"}\n"
+    }
+  ],
+  "retrieval": {
+    "mode": "all",
+    "candidates": [
+      {
+        "kind": "model",
+        "id": "t-model",
+        "version": "1.0.0"
+      },
+      {
+        "kind": "operation",
+        "id": "t-op",
+        "version": "1.0.0"
+      }
+    ]
+  },
+  "attempts": [
+    {
+      "seq": 1,
+      "response": {
+        "content": "schema_version: 1\nflow_id: drafted-flow\nflow_version: 0.1.0\ndescription: planner 草案（最小双 transform 链）\ninput_schema:\n  type: object\n  properties:\n    text: {type: string}\n  required: [text]\n  additionalProperties: false\noutput_schema:\n  type: object\n  properties:\n    text: {type: string}\n  required: [text]\n  additionalProperties: false\nentry: step_a\nsteps:\n  - id: step_a\n    type: transform\n    description: 透传\n    required: true\n    inputs:\n      text: {ref: flow_input, path: /text}\n    output_schema:\n      type: object\n      properties:\n        text: {type: string}\n      required: [text]\n      additionalProperties: false\n    operation: {id: t-op, version: 1.0.0}\n  - id: step_b\n    type: transform\n    description: 透传\n    required: true\n    inputs:\n      text: {ref: step_output, step: step_a, path: /text}\n    output_schema:\n      type: object\n      properties:\n        text: {type: string}\n      required: [text]\n      additionalProperties: false\n    operation: {id: t-op, version: 1.0.0}\ntransitions:\n  - id: a_to_b\n    type: next\n    from: step_a\n    to: step_b\noutputs:\n  text: {ref: step_output, step: step_b, path: /text}\n",
+        "content_type": "str",
+        "transport_status": "ok",
+        "error": null,
+        "error_type": null,
+        "usage": {
+          "source": "fake-counter",
+          "total_tokens": 0
+        }
+      },
+      "valid": true,
+      "errors": []
+    }
+  ],
+  "retry_limit": 3,
+  "adopted": {
+    "definition": {
+      "schema_version": 1,
+      "flow_id": "drafted-flow",
+      "flow_version": "0.1.0",
+      "description": "planner 草案（最小双 transform 链）",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "additionalProperties": false
+      },
+      "entry": "step_a",
+      "steps": [
+        {
+          "id": "step_a",
+          "description": "透传",
+          "required": true,
+          "inputs": {
+            "text": {
+              "ref": "flow_input",
+              "path": "/text"
+            }
+          },
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "type": "transform",
+          "operation": {
+            "id": "t-op",
+            "version": "1.0.0"
+          }
+        },
+        {
+          "id": "step_b",
+          "description": "透传",
+          "required": true,
+          "inputs": {
+            "text": {
+              "ref": "step_output",
+              "step": "step_a",
+              "path": "/text"
+            }
+          },
+          "output_schema": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "text"
+            ],
+            "additionalProperties": false
+          },
+          "type": "transform",
+          "operation": {
+            "id": "t-op",
+            "version": "1.0.0"
+          }
+        }
+      ],
+      "transitions": [
+        {
+          "type": "next",
+          "id": "a_to_b",
+          "from": "step_a",
+          "to": "step_b"
+        }
+      ],
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "additionalProperties": false
+      },
+      "outputs": {
+        "text": {
+          "ref": "step_output",
+          "step": "step_b",
+          "path": "/text"
+        }
+      }
+    },
+    "definition_hash": "sha256:fa6ec4f4fab0e4f116dfb22bb68c859a08c52f1a2f184d806cbc10dddc82da4a"
+  },
+  "terminal_stage": "completed",
+  "error": null
+}

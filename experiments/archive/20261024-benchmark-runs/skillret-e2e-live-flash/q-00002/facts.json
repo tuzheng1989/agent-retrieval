@@ -1,0 +1,87 @@
+{
+  "query_id": "q-00002",
+  "query": "Design a lobby screen for ShieldBattery that displays while players are waiting for a match to start — it should show each player's race selection, their MMR badge, a real-time countdown timer, and a map preview with spawn locations highlighted. I want the layout to feel bold and confident, not like a generic loading screen — think strong typography, dramatic use of negative space, and maybe some subtle animated accents that reinforce the competitive atmosphere without being distracting. Can you build this out as a React component using the existing design system tokens?",
+  "arm": "docgen",
+  "status": "completed",
+  "verify": "finalized",
+  "retrieval": {
+    "pool": 6006,
+    "selected": [
+      "31f49139-029f-4aae-a9d8-186379bc6dda",
+      "3f032d2b-cf74-4988-9770-bc7923a16915",
+      "cd12e848-8e35-472b-b2ad-0f2f1a180b08",
+      "f1b8e797-1899-4625-b405-7c61b58dfc97",
+      "80b30c0a-20cc-4033-a971-6455b9ab3405",
+      "9a2ed849-34b2-4bec-b657-ef725de45a3c",
+      "05c64ebd-0d80-451b-ae2f-4a7d44ed9751",
+      "aa9632e8-b106-442e-adee-1b226919898b",
+      "58997cf1-3479-49d1-ba4d-3c8853831538",
+      "5a830e03-aa47-4504-9e1f-4cffb183bf32",
+      "ea31c79e-4ff5-4fa9-baae-b334d6432859",
+      "6bf5f5d1-b47f-49ec-9628-6e2ceac1ccb5",
+      "c2e7a533-0843-4824-903a-1cd60c03db86",
+      "e80d5b9f-c48c-4624-be4c-e3cbba2ead15",
+      "23d81bb9-9066-4907-8456-ccc07ccef1fa",
+      "e1c31a64-694b-4a98-b3fb-5728ca4bbccd",
+      "b92b552f-21b9-436d-9b2f-c99dc7e33fa1",
+      "2a438453-26b7-42a2-b0df-728e6b98d3fa",
+      "a9bd93fe-5379-42ca-a9a4-c745b591aa6f",
+      "83b04dc8-876f-41c9-ae6f-067f84a6b219"
+    ],
+    "seconds": 2.6124
+  },
+  "gold_ids": [
+    "3f032d2b-cf74-4988-9770-bc7923a16915"
+  ],
+  "candidate_recall": 1.0,
+  "selected_skill_id": "3f032d2b-cf74-4988-9770-bc7923a16915",
+  "selected_skill_name": "frontend-design",
+  "selected_is_gold": true,
+  "skill_body_chars": 6658,
+  "planner_attempts": 2,
+  "planner_usage": [
+    {
+      "source": "provider",
+      "input": 7873,
+      "output": 613,
+      "total": 8486,
+      "estimated": false,
+      "cached": 0
+    },
+    {
+      "source": "provider",
+      "input": 7963,
+      "output": 601,
+      "total": 8564,
+      "estimated": false,
+      "cached": 2048
+    }
+  ],
+  "execution_usage": [
+    {
+      "cached": 0,
+      "estimated": false,
+      "input": 1626,
+      "output": 2121,
+      "source": "provider",
+      "total": 3747
+    }
+  ],
+  "stream_chunks": 2118,
+  "menu": {
+    "entries": 21,
+    "menu_chars": 18607,
+    "menu_utf8_bytes": 18607,
+    "prompt_chars": 26805
+  },
+  "plan_seconds": 25.289,
+  "total_seconds": 71.182,
+  "definition_hash": "sha256:3134ae4bc920f0ac3c6a281c0489f0e12fa6ddd205017b4be1a3f60e6b23b87b",
+  "frozen_execution_hash": "sha256:46820de585c98037d0f7220123e0c354846c1babfa01017b0548e88833ab510f",
+  "bundle_dir": ".scratch\\skillret-e2e-live-flash\\q-00002\\skillret-q-00002\\1.0.0\\8c5ffa535655428598da5b4c5d9907aa",
+  "output": {
+    "skill_id": "3f032d2b-cf74-4988-9770-bc7923a16915",
+    "skill_name": "frontend-design",
+    "answer": "Here's a lobby screen design built around **anticipation**—the emotional core of pre-match waiting. This is a 'countdown to combat' moment, not a loading screen.\n\n## Design Direction\n\n**The one memorable element:** a large countdown timer as the visual anchor—big Sofia Sans numerals that shift from calm white → amber → urgent red as time drains, with a subtle pulse on the final seconds. Everything else supports it.\n\n**Layout:** Two-zone composition. Left side (hero zone): huge timer, 'MATCH FOUND' title, generous negative space. Right side: player roster with race + MMR. Bottom: full-width map preview strip.\n\n```tsx\nimport styled from 'styled-components'\nimport { motion, AnimatePresence } from 'motion/react'\nimport { MaterialIcon } from '../material/icon'\nimport { color, White, DimTextColor } from '../styles/colors'\nimport { body1, headline1, overline } from '../styles/typography'\n\nconst ANIM_SPRING = { type: 'spring', stiffness: 300, damping: 24 }\n\nconst Container = styled.div`\n  display: flex;\n  flex-direction: column;\n  height: 100%;\n  background: ${color('neutral900')};\n  padding: 48px 56px;\n  gap: 40px;\n`\n\nconst TopRow = styled.div`\n  display: flex;\n  flex: 1;\n  gap: 64px;\n  align-items: center;\n`\n\nconst TimerZone = styled.div`\n  flex: 1;\n  display: flex;\n  flex-direction: column;\n  align-items: flex-start;\n  gap: 12px;\n`\n\nconst Overline = styled.div`\n  ${overline}\n  letter-spacing: 0.2em;\n  text-transform: uppercase;\n  color: ${color('bluegray300')};\n  display: flex;\n  align-items: center;\n  gap: 8px;\n`\n\nconst PulseDot = styled(motion.span)`\n  width: 8px;\n  height: 8px;\n  border-radius: 50%;\n  background: ${color('blue400')};\n`\n\nconst TimerText = styled(motion.div)<{ $urgent: boolean; $warning: boolean }>`\n  ${headline1}\n  font-size: 120px;\n  font-weight: 700;\n  font-variant-numeric: tabular-nums;\n  line-height: 1;\n  transition: color 400ms cubic-bezier(0.4, 0, 0.2, 1);\n  color: ${p =>\n    p.$urgent ? color('red400') : p.$warning ? color('amber400') : White()};\n`\n\nconst PlayerList = styled.div`\n  display: flex;\n  flex-direction: column;\n  gap: 16px;\n  min-width: 320px;\n`\n\nconst PlayerRow = styled(motion.div)<{ $ready: boolean }>`\n  display: flex;\n  align-items: center;\n  gap: 16px;\n  padding: 16px 20px;\n  background: ${color('neutral800')};\n  border-left: 3px solid\n    ${p => (p.$ready ? color('blue400') : color('neutral600'))};\n`\n\nconst RaceBadge = styled.div`\n  width: 40px;\n  height: 40px;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  border-radius: 4px;\n`\n\nconst MmrBadge = styled.span<{ $high?: boolean }>`\n  margin-left: auto;\n  font-variant-numeric: tabular-nums;\n  font-weight: 600;\n  color: ${p => (p.$high ? color('amber400') : DimTextColor())};\n`\n\nconst MapPreview = styled.div`\n  height: 160px;\n  border-radius: 8px;\n  overflow: hidden;\n  position: relative;\n  background: ${color('neutral800')};\n`\n\nconst SpawnPoint = styled(motion.div)`\n  position: absolute;\n  width: 20px;\n  height: 20px;\n  border-radius: 50%;\n  background: transparent;\n  border: 2px solid ${color('blue400')};\n  box-shadow: 0 0 12px ${color('blue400')};\n`\n```\n\n```tsx\nexport function LobbyScreen({\n  players,\n  secondsRemaining,\n  map,\n}: {\n  players: { name: string; race: string; mmr: number; ready: boolean }[]\n  secondsRemaining: number\n  map: { name: string; imageUrl: string; spawns: { x: number; y: number }[] }\n}) {\n  const urgent = secondsRemaining <= 5\n  const warning = secondsRemaining <= 15\n\n  const raceColor = (race: string) =>\n    ({ terran: '#4fc3f7', protoss: '#ce93d8', zerg: '#aed581', random: '#ffb74d' }[race] ?? '#90a4ae')\n\n  return (\n    <Container>\n      <TopRow>\n        <TimerZone>\n          <Overline>\n            <PulseDot animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 2, repeat: Infinity }} />\n            Match found · locking in\n          </Overline>\n          <TimerText\n            $urgent={urgent}\n            $warning={warning}\n            key={secondsRemaining}\n            initial={{ scale: urgent ? 1.08 : 1 }}\n            animate={{ scale: 1 }}\n            transition={ANIM_SPRING}\n          >\n            0:{String(secondsRemaining).padStart(2, '0')}\n          </TimerText>\n        </TimerZone>\n\n        <PlayerList>\n          {players.map((p, i) => (\n            <PlayerRow key={p.name} $ready={p.ready}\n              initial={{ opacity: 0, x: 24 }}\n              animate={{ opacity: 1, x: 0 }}\n              transition={{ ...ANIM_SPRING, delay: i * 0.1 }}>\n              <RaceBadge style={{ background: `${raceColor(p.race)}22` }}>\n                <span style={{ color: raceColor(p.race), fontWeight: 700, textTransform: 'capitalize' }}>\n                  {p.race[0]}\n                </span>\n              </RaceBadge>\n              <div>{p.name}</div>\n              <MmrBadge $high={p.mmr >= 2000}>{p.mmr} MMR</MmrBadge>\n            </PlayerRow>\n          ))}\n        </PlayerList>\n      </TopRow>\n\n      <MapPreview>\n        <img src={map.imageUrl} alt={map.name} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }} />\n        {map.spawns.map((s, i) => (\n          <SpawnPoint key={i} style={{ left: `${s.x}%`, top: `${s.y}%` }}\n            initial={{ scale: 0, opacity: 0 }}\n            animate={{ scale: [0, 1.4, 1], opacity: 1 }}\n            transition={{ ...ANIM_SPRING, delay: 0.6 + i * 0.25 }} />\n        ))}\n        <div style={{ position: 'absolute', bottom: 12, left: 16, ...overline, textTransform: 'uppercase', letterSpacing: '0.15em' }}>\n          {map.name}\n        </div>\n      </MapPreview>\n    </Container>\n  )\n}\n```\n\n## Key design decisions\n\n1. **Timer as hero** — 120px tabular numerals, color-shifting (white → `amber400` → `red400`) following the draft-screen urgency pattern. The per-second `key` change triggers a scale pop; at ≤5s it gets a noticeable 1.08 spring.\n2. **Staggered entrance** — players and spawn points animate in sequence (0.1s / 0.25s offsets), giving the lobby a 'roster assembling' rhythm instead of popping in all at once.\n3. **Race identity through color** — each race gets a tinted badge at 13% opacity with matching text color, using race-adjacent hues; swap to your exact race color tokens from `colors.ts`.\n4. **MMR as quiet flex** — tabular numerals, amber for high ratings, muted otherwise. Confident but not shouting.\n5. **Negative space does the work** — the flex-1 timer zone against the fixed-width roster creates tension; nothing is cramped.\n\n**Production notes:** use the actual race icon set rather than letter badges, wire `soundIntegration` like `post-match-dialog.tsx` for the final-5-seconds tick, and replace hardcoded colors with the design-system semantic tokens (`--theme-positive`, race colors from `colors.ts`), which I've approximated inline here."
+  }
+}

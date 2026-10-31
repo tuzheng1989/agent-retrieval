@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "plan_id": "a152bc35f5284eda9d93d7731c131c81",
+  "task": "做一条最小流程",
+  "hints": null,
+  "model": null,
+  "prompt": null,
+  "retrieval": {
+    "mode": "all",
+    "candidates": null
+  },
+  "attempts": [],
+  "retry_limit": 3,
+  "adopted": null,
+  "terminal_stage": "model_resolution",
+  "error": {
+    "stage": "model_resolution",
+    "code": "model_resolve_failed",
+    "message": "planner_model 't-model' 解析失败（kind=model，已见版本 ['2.0.0-rc.1']）：无法从快照解析 model/<built-in function id> 满足约束 '>=0.0.0'"
+  }
+}

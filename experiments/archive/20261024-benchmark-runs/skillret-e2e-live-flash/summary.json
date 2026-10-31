@@ -1,0 +1,312 @@
+{
+  "dataset": "SkillRet",
+  "revision": "a050ad2",
+  "source_file_sha256": {
+    "data_skills_test.jsonl": "1960453e422e4ba01977197580934ca3c02b2ac302dfa9c0d074707d961b7c81",
+    "data_queries_test.jsonl": "4d07a35f40e597f8468c6dab480c95a1f9b40ecbde80274081ba2e7c643d0f6d",
+    "data_qrels_test.jsonl": "edbfae0b8109de460d54e27e6235b1b47316f34956744db0571ad1b4ddb860af",
+    "docgen-skillret.jsonl": "45a991ba2446744ef6dce1e6a03de83bd89a7c54c9e71cd926a97d75099242da"
+  },
+  "source_dir": "C:\\Users\\tuzhe\\runspace\\agent-retrieval\\experiments\\benchmarks\\data",
+  "skill_pool": 6006,
+  "labeled_queries": 4392,
+  "sample_policy": "file-order prefix, no selection by label or ranking",
+  "sample_cases": 20,
+  "window": 20,
+  "model": "glm-5.3-flash",
+  "retrieval": {
+    "plain": {
+      "metrics": {
+        "recall@5": 0.4583,
+        "completeness@5": 0.3,
+        "ndcg@5": 0.4788,
+        "recall@10": 0.4917,
+        "completeness@10": 0.3,
+        "ndcg@10": 0.4949,
+        "recall@20": 0.5417,
+        "completeness@20": 0.35,
+        "ndcg@20": 0.5132
+      },
+      "mean_seconds": 1.6278
+    },
+    "docgen": {
+      "metrics": {
+        "recall@5": 0.5667,
+        "completeness@5": 0.4,
+        "ndcg@5": 0.5898,
+        "recall@10": 0.6833,
+        "completeness@10": 0.5,
+        "ndcg@10": 0.6294,
+        "recall@20": 0.8667,
+        "completeness@20": 0.7,
+        "ndcg@20": 0.6818
+      },
+      "mean_seconds": 4.0004
+    }
+  },
+  "live": [
+    {
+      "query_id": "q-00001",
+      "query": "Design a system where an LLM-based assistant can autonomously manage a small e-commerce store's customer support: it should triage incoming tickets by intent (refund, tracking, product question, complaint), decide when to escalate to a human, use tools like an order lookup API and a refund processing API, and handle multi-turn conversations where it might need to gather info across several steps before resolving an issue. I want the full architecture—how the agent loop works, what the tool schemas look like, how memory/state is maintained between turns, and how you'd implement guardrails so it doesn't approve refunds above a certain threshold without human approval. Please include pseudocode for the core orchestration logic.",
+      "arm": "docgen",
+      "status": "completed",
+      "verify": "finalized",
+      "retrieval": {
+        "pool": 6006,
+        "selected": [
+          "904b70b5-2b8c-4996-9f39-ad0cae17f3ac",
+          "7f06b2fa-3d64-4c98-99f8-9c5471d3132f",
+          "a09e4d91-66d6-493a-9336-cad842a45744",
+          "851e4a58-a61a-4eaa-af7e-b4b7fefd01c1",
+          "83e3d174-b223-420d-a27d-5b08ea72004c",
+          "7f72c6de-5c49-43c7-91b1-c5b6cbeb47bd",
+          "15238809-fd15-4616-bca6-5b620d221cc4",
+          "225c8268-65fc-444e-8bf1-8cb38bb01029",
+          "45ac0cab-8bbd-4da4-b84a-c0feb102d422",
+          "797e7117-434a-4f6a-a0fa-de326988a2b9",
+          "c805f1db-aaa2-43bf-97d4-8f911dabd668",
+          "57ca9c6b-c2c3-446a-b695-09f824efc80d",
+          "d33731ab-89f8-437a-8ddc-34ed5d6c2d15",
+          "474930d9-74cd-494d-bfb1-8fa1ca7a77f2",
+          "49145d34-9ea8-4075-83a7-ffe815bec890",
+          "61c24c03-0b49-405c-ab15-dab90fd1191f",
+          "635e7d77-4252-4e52-8007-25d7b158f461",
+          "7d5df49f-62e6-4118-a80e-d71430c3f416",
+          "62a454a1-3f14-4edc-a03c-f1c2597c021c",
+          "d0534a79-e58a-4ab0-899e-c03bab055e03"
+        ],
+        "seconds": 2.7779
+      },
+      "gold_ids": [
+        "57ca9c6b-c2c3-446a-b695-09f824efc80d"
+      ],
+      "candidate_recall": 1.0,
+      "selected_skill_id": "57ca9c6b-c2c3-446a-b695-09f824efc80d",
+      "selected_skill_name": "agents",
+      "selected_is_gold": true,
+      "skill_body_chars": 11183,
+      "planner_attempts": 1,
+      "planner_usage": [
+        {
+          "source": "provider",
+          "input": 7660,
+          "output": 640,
+          "total": 8300,
+          "estimated": false,
+          "cached": 0
+        }
+      ],
+      "execution_usage": [
+        {
+          "cached": 0,
+          "estimated": false,
+          "input": 2631,
+          "output": 1388,
+          "source": "provider",
+          "total": 4019
+        }
+      ],
+      "stream_chunks": 1371,
+      "menu": {
+        "entries": 21,
+        "menu_chars": 17272,
+        "menu_utf8_bytes": 17310,
+        "prompt_chars": 25627
+      },
+      "plan_seconds": 18.673,
+      "total_seconds": 60.956,
+      "definition_hash": "sha256:8a98b934ee8e11601e5c3e4449633526fa5390694b04fa3bc848730c4ce6bbc9",
+      "frozen_execution_hash": "sha256:d449b9a6a6282eea3d9b2cba0b7b5f7af211291e7abb7c6f27b62503e08fddb5",
+      "bundle_dir": ".scratch\\skillret-e2e-live-flash\\q-00001\\skillret-q-00001\\1.0.0\\f040e1c8e297419fa244c2d22670c95c",
+      "output": {
+        "answer": "ARCHITECTURE: LLM CUSTOMER SUPPORT AGENT FOR E-COMMERCE\n\n1. HIGH-LEVEL DESIGN\nUse a hybrid: a workflow for triage (routing pattern) feeding an agent loop (ReAct-style) per conversation. Triage is deterministic enough to be a cheap classification call; resolution needs dynamic multi-step reasoning, so an agent handles it. Human-in-the-loop guardrails gate sensitive actions (large refunds, escalations).\n\nComponents:\n- Triage service: classifies intent -> {refund, tracking, product_question, complaint} and assigns priority\n- Agent runtime: autonomous loop with tools, per-conversation state, max-step and budget limits\n- Tool layer: order_lookup, refund_process, tracking_status, knowledge_base_search, escalate_to_human, reply_to_customer\n- State store: conversation state persisted per ticket (DB/Redis)\n- Guardrail layer: wraps tool execution with policy checks\n- Human queue: escalation handoff with full transcript + agent summary\n\n2. TRIAGE (WORKFLOW)\n\nasync def triage(ticket):\n    intent = await llm.generate(\n        f\"Classify into [refund, tracking, product_question, complaint].\\n{ticket.body}\")\n    priority = \"high\" if intent == \"complaint\" else \"normal\"\n    return route(intent, ticket)\n\nRouting is a dict lookup to per-intent system prompts (refund agent gets policy text; product_question agent gets KB search emphasis).\n\n3. AGENT LOOP (CORE ORCHESTRATION PSEUDOCODE)\n\nasync def run_agent(ticket, max_steps=8):\n    state = load_or_create_state(ticket.id)\n    messages = [\n        {\"role\": \"system\", \"content\": SYSTEM_PROMPT + POLICY_TEXT},\n        {\"role\": \"user\", \"content\": ticket.body},\n    ] + state.history\n\n    for step in range(max_steps):\n        resp = await llm.generate(messages, tools=TOOL_SCHEMAS)\n        messages.append(resp.as_message())\n\n        if not resp.tool_calls:\n            state.status = \"resolved\"\n            save_state(state, messages)\n            return resp.content  # final customer-facing reply\n\n        for call in resp.tool_calls:\n            result = await guarded_execute(call, state)   # guardrails here\n            messages.append({\"role\": \"tool\",\n                             \"tool_call_id\": call.id,\n                             \"content\": result})\n            save_state(state, messages)  # checkpoint every step\n\n    return await escalate(ticket, messages, reason=\"max_steps_reached\")\n\nasync def guarded_execute(call, state):\n    # Policy guardrail: refunds above threshold require human approval\n    if call.name == \"process_refund\":\n        amount = call.arguments[\"amount\"]\n        order = await order_lookup(call.arguments[\"order_id\"])\n        if not state.verified_customer:\n            return \"ERROR: verify customer identity first (email + order match)\"\n        if amount > REFUND_LIMIT:  # e.g. $50\n            req = await create_approval_request(call, state)\n            return (f\"ESCALATED: refund ${amount} exceeds limit. \"\n                    f\"Human approval pending (id={req.id}). Inform the customer.\")\n    if call.name == \"process_refund\" and state.refund_issued:\n        return \"ERROR: refund already issued for this ticket (idempotency guard)\"\n    try:\n        return await TOOLS[call.name].execute(**call.arguments)\n    except Exception as e:\n        return f\"Error: {e}\"  # errors as text so the LLM can recover\n\n4. TOOL SCHEMAS (JSON-schema style)\n\n- lookup_order(order_id?: string, email?: string)\n  \"Look up an order by ID, or match by customer email. Returns status, items, amounts, shipping/tracking info.\"\n- get_tracking(tracking_number: string)\n- search_knowledge_base(query: string, limit?: int)\n- process_refund(order_id: string, amount: number, reason: string)\n  \"Issues a refund. Requires verified customer. Amounts over the policy limit are escalated automatically.\"\n- escalate_to_human(ticket_id: string, summary: string, urgency: enum)\n- send_reply(ticket_id: string, message: string)  // customer-facing messages\n\nTool design rules: text-in/text-out, self-contained results, truncated outputs, errors returned as strings (never thrown) so the agent can reason and retry.\n\n5. MULTI-TURN MEMORY / STATE\nPersist a ConversationState per ticket:\n\nstate = {\n  ticket_id, intent, priority,\n  customer_verified: bool,        # set after lookup_order email match\n  order_id, refund_issued: bool,  # idempotency flags\n  pending_approvals: [ids],\n  history: [...],                 # full message transcript incl. tool results\n  step_count, token_spend\n}\n\nOn each new inbound message: load state, append user message, resume the loop (the transcript IS the working memory). Keep history truncated/summarized beyond ~20 turns to control tokens. The verified_customer and refund_issued flags live in state, not in the LLM's head—guardrails read them directly so prompt manipulation can't bypass policy.\n\n6. GUARDRAILS\n- Refund threshold: any process_refund above $50 auto-escalates via a pending human approval; the agent must tell the customer it's in progress\n- Identity verification required before any account-affecting tool\n- Idempotency: one refund per ticket/order\n- Hard limits: max_steps=8, token budget, per-ticket tool-call cap\n- Allowed-actions allowlist per intent (tracking agent can't call process_refund)\n- All actions logged; approval requests include transcript + agent summary for the human reviewer\n- Output filter on send_reply: block PII leakage and off-policy promises\n\n7. ESCALATION FLOW\nescalate() closes the agent loop, posts a summary (intent, actions taken, customer sentiment, suggested resolution) to the human queue, sets state.status='escalated', and pauses until the human resolves—new customer messages go straight to the human with agent-drafted suggested replies.",
+        "skill_id": "57ca9c6b-c2c3-446a-b695-09f824efc80d",
+        "skill_name": "agents"
+      }
+    },
+    {
+      "query_id": "q-00002",
+      "query": "Design a lobby screen for ShieldBattery that displays while players are waiting for a match to start — it should show each player's race selection, their MMR badge, a real-time countdown timer, and a map preview with spawn locations highlighted. I want the layout to feel bold and confident, not like a generic loading screen — think strong typography, dramatic use of negative space, and maybe some subtle animated accents that reinforce the competitive atmosphere without being distracting. Can you build this out as a React component using the existing design system tokens?",
+      "arm": "docgen",
+      "status": "completed",
+      "verify": "finalized",
+      "retrieval": {
+        "pool": 6006,
+        "selected": [
+          "31f49139-029f-4aae-a9d8-186379bc6dda",
+          "3f032d2b-cf74-4988-9770-bc7923a16915",
+          "cd12e848-8e35-472b-b2ad-0f2f1a180b08",
+          "f1b8e797-1899-4625-b405-7c61b58dfc97",
+          "80b30c0a-20cc-4033-a971-6455b9ab3405",
+          "9a2ed849-34b2-4bec-b657-ef725de45a3c",
+          "05c64ebd-0d80-451b-ae2f-4a7d44ed9751",
+          "aa9632e8-b106-442e-adee-1b226919898b",
+          "58997cf1-3479-49d1-ba4d-3c8853831538",
+          "5a830e03-aa47-4504-9e1f-4cffb183bf32",
+          "ea31c79e-4ff5-4fa9-baae-b334d6432859",
+          "6bf5f5d1-b47f-49ec-9628-6e2ceac1ccb5",
+          "c2e7a533-0843-4824-903a-1cd60c03db86",
+          "e80d5b9f-c48c-4624-be4c-e3cbba2ead15",
+          "23d81bb9-9066-4907-8456-ccc07ccef1fa",
+          "e1c31a64-694b-4a98-b3fb-5728ca4bbccd",
+          "b92b552f-21b9-436d-9b2f-c99dc7e33fa1",
+          "2a438453-26b7-42a2-b0df-728e6b98d3fa",
+          "a9bd93fe-5379-42ca-a9a4-c745b591aa6f",
+          "83b04dc8-876f-41c9-ae6f-067f84a6b219"
+        ],
+        "seconds": 2.6124
+      },
+      "gold_ids": [
+        "3f032d2b-cf74-4988-9770-bc7923a16915"
+      ],
+      "candidate_recall": 1.0,
+      "selected_skill_id": "3f032d2b-cf74-4988-9770-bc7923a16915",
+      "selected_skill_name": "frontend-design",
+      "selected_is_gold": true,
+      "skill_body_chars": 6658,
+      "planner_attempts": 2,
+      "planner_usage": [
+        {
+          "source": "provider",
+          "input": 7873,
+          "output": 613,
+          "total": 8486,
+          "estimated": false,
+          "cached": 0
+        },
+        {
+          "source": "provider",
+          "input": 7963,
+          "output": 601,
+          "total": 8564,
+          "estimated": false,
+          "cached": 2048
+        }
+      ],
+      "execution_usage": [
+        {
+          "cached": 0,
+          "estimated": false,
+          "input": 1626,
+          "output": 2121,
+          "source": "provider",
+          "total": 3747
+        }
+      ],
+      "stream_chunks": 2118,
+      "menu": {
+        "entries": 21,
+        "menu_chars": 18607,
+        "menu_utf8_bytes": 18607,
+        "prompt_chars": 26805
+      },
+      "plan_seconds": 25.289,
+      "total_seconds": 71.182,
+      "definition_hash": "sha256:3134ae4bc920f0ac3c6a281c0489f0e12fa6ddd205017b4be1a3f60e6b23b87b",
+      "frozen_execution_hash": "sha256:46820de585c98037d0f7220123e0c354846c1babfa01017b0548e88833ab510f",
+      "bundle_dir": ".scratch\\skillret-e2e-live-flash\\q-00002\\skillret-q-00002\\1.0.0\\8c5ffa535655428598da5b4c5d9907aa",
+      "output": {
+        "skill_id": "3f032d2b-cf74-4988-9770-bc7923a16915",
+        "skill_name": "frontend-design",
+        "answer": "Here's a lobby screen design built around **anticipation**—the emotional core of pre-match waiting. This is a 'countdown to combat' moment, not a loading screen.\n\n## Design Direction\n\n**The one memorable element:** a large countdown timer as the visual anchor—big Sofia Sans numerals that shift from calm white → amber → urgent red as time drains, with a subtle pulse on the final seconds. Everything else supports it.\n\n**Layout:** Two-zone composition. Left side (hero zone): huge timer, 'MATCH FOUND' title, generous negative space. Right side: player roster with race + MMR. Bottom: full-width map preview strip.\n\n```tsx\nimport styled from 'styled-components'\nimport { motion, AnimatePresence } from 'motion/react'\nimport { MaterialIcon } from '../material/icon'\nimport { color, White, DimTextColor } from '../styles/colors'\nimport { body1, headline1, overline } from '../styles/typography'\n\nconst ANIM_SPRING = { type: 'spring', stiffness: 300, damping: 24 }\n\nconst Container = styled.div`\n  display: flex;\n  flex-direction: column;\n  height: 100%;\n  background: ${color('neutral900')};\n  padding: 48px 56px;\n  gap: 40px;\n`\n\nconst TopRow = styled.div`\n  display: flex;\n  flex: 1;\n  gap: 64px;\n  align-items: center;\n`\n\nconst TimerZone = styled.div`\n  flex: 1;\n  display: flex;\n  flex-direction: column;\n  align-items: flex-start;\n  gap: 12px;\n`\n\nconst Overline = styled.div`\n  ${overline}\n  letter-spacing: 0.2em;\n  text-transform: uppercase;\n  color: ${color('bluegray300')};\n  display: flex;\n  align-items: center;\n  gap: 8px;\n`\n\nconst PulseDot = styled(motion.span)`\n  width: 8px;\n  height: 8px;\n  border-radius: 50%;\n  background: ${color('blue400')};\n`\n\nconst TimerText = styled(motion.div)<{ $urgent: boolean; $warning: boolean }>`\n  ${headline1}\n  font-size: 120px;\n  font-weight: 700;\n  font-variant-numeric: tabular-nums;\n  line-height: 1;\n  transition: color 400ms cubic-bezier(0.4, 0, 0.2, 1);\n  color: ${p =>\n    p.$urgent ? color('red400') : p.$warning ? color('amber400') : White()};\n`\n\nconst PlayerList = styled.div`\n  display: flex;\n  flex-direction: column;\n  gap: 16px;\n  min-width: 320px;\n`\n\nconst PlayerRow = styled(motion.div)<{ $ready: boolean }>`\n  display: flex;\n  align-items: center;\n  gap: 16px;\n  padding: 16px 20px;\n  background: ${color('neutral800')};\n  border-left: 3px solid\n    ${p => (p.$ready ? color('blue400') : color('neutral600'))};\n`\n\nconst RaceBadge = styled.div`\n  width: 40px;\n  height: 40px;\n  display: flex;\n  align-items: center;\n  justify-content: center;\n  border-radius: 4px;\n`\n\nconst MmrBadge = styled.span<{ $high?: boolean }>`\n  margin-left: auto;\n  font-variant-numeric: tabular-nums;\n  font-weight: 600;\n  color: ${p => (p.$high ? color('amber400') : DimTextColor())};\n`\n\nconst MapPreview = styled.div`\n  height: 160px;\n  border-radius: 8px;\n  overflow: hidden;\n  position: relative;\n  background: ${color('neutral800')};\n`\n\nconst SpawnPoint = styled(motion.div)`\n  position: absolute;\n  width: 20px;\n  height: 20px;\n  border-radius: 50%;\n  background: transparent;\n  border: 2px solid ${color('blue400')};\n  box-shadow: 0 0 12px ${color('blue400')};\n`\n```\n\n```tsx\nexport function LobbyScreen({\n  players,\n  secondsRemaining,\n  map,\n}: {\n  players: { name: string; race: string; mmr: number; ready: boolean }[]\n  secondsRemaining: number\n  map: { name: string; imageUrl: string; spawns: { x: number; y: number }[] }\n}) {\n  const urgent = secondsRemaining <= 5\n  const warning = secondsRemaining <= 15\n\n  const raceColor = (race: string) =>\n    ({ terran: '#4fc3f7', protoss: '#ce93d8', zerg: '#aed581', random: '#ffb74d' }[race] ?? '#90a4ae')\n\n  return (\n    <Container>\n      <TopRow>\n        <TimerZone>\n          <Overline>\n            <PulseDot animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 2, repeat: Infinity }} />\n            Match found · locking in\n          </Overline>\n          <TimerText\n            $urgent={urgent}\n            $warning={warning}\n            key={secondsRemaining}\n            initial={{ scale: urgent ? 1.08 : 1 }}\n            animate={{ scale: 1 }}\n            transition={ANIM_SPRING}\n          >\n            0:{String(secondsRemaining).padStart(2, '0')}\n          </TimerText>\n        </TimerZone>\n\n        <PlayerList>\n          {players.map((p, i) => (\n            <PlayerRow key={p.name} $ready={p.ready}\n              initial={{ opacity: 0, x: 24 }}\n              animate={{ opacity: 1, x: 0 }}\n              transition={{ ...ANIM_SPRING, delay: i * 0.1 }}>\n              <RaceBadge style={{ background: `${raceColor(p.race)}22` }}>\n                <span style={{ color: raceColor(p.race), fontWeight: 700, textTransform: 'capitalize' }}>\n                  {p.race[0]}\n                </span>\n              </RaceBadge>\n              <div>{p.name}</div>\n              <MmrBadge $high={p.mmr >= 2000}>{p.mmr} MMR</MmrBadge>\n            </PlayerRow>\n          ))}\n        </PlayerList>\n      </TopRow>\n\n      <MapPreview>\n        <img src={map.imageUrl} alt={map.name} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }} />\n        {map.spawns.map((s, i) => (\n          <SpawnPoint key={i} style={{ left: `${s.x}%`, top: `${s.y}%` }}\n            initial={{ scale: 0, opacity: 0 }}\n            animate={{ scale: [0, 1.4, 1], opacity: 1 }}\n            transition={{ ...ANIM_SPRING, delay: 0.6 + i * 0.25 }} />\n        ))}\n        <div style={{ position: 'absolute', bottom: 12, left: 16, ...overline, textTransform: 'uppercase', letterSpacing: '0.15em' }}>\n          {map.name}\n        </div>\n      </MapPreview>\n    </Container>\n  )\n}\n```\n\n## Key design decisions\n\n1. **Timer as hero** — 120px tabular numerals, color-shifting (white → `amber400` → `red400`) following the draft-screen urgency pattern. The per-second `key` change triggers a scale pop; at ≤5s it gets a noticeable 1.08 spring.\n2. **Staggered entrance** — players and spawn points animate in sequence (0.1s / 0.25s offsets), giving the lobby a 'roster assembling' rhythm instead of popping in all at once.\n3. **Race identity through color** — each race gets a tinted badge at 13% opacity with matching text color, using race-adjacent hues; swap to your exact race color tokens from `colors.ts`.\n4. **MMR as quiet flex** — tabular numerals, amber for high ratings, muted otherwise. Confident but not shouting.\n5. **Negative space does the work** — the flex-1 timer zone against the fixed-width roster creates tension; nothing is cramped.\n\n**Production notes:** use the actual race icon set rather than letter badges, wire `soundIntegration` like `post-match-dialog.tsx` for the final-5-seconds tick, and replace hardcoded colors with the design-system semantic tokens (`--theme-positive`, race colors from `colors.ts`), which I've approximated inline here."
+      }
+    },
+    {
+      "query_id": "q-00003",
+      "query": "Here's the landing page for my poetry journal's website — the text is all over the place right now. The heading uses Papyrus, the body copy is in 11px Arial, the author bylines are bold italic 18px while the poem titles are regular 12px, and the pull quotes are the same size as everything else so nothing stands out. Can you rework the CSS so the typographic hierarchy actually makes sense — proper font pairings, consistent weights, readable sizes, and clear visual distinction between headings, poem titles, bylines, body text, and featured quotes?",
+      "arm": "docgen",
+      "status": "completed",
+      "verify": "finalized",
+      "retrieval": {
+        "pool": 6006,
+        "selected": [
+          "80b3b6d6-4247-4f25-9d5c-1539ec32777c",
+          "6a63b89d-9af6-4998-885e-f08e3e65cd5b",
+          "14e7e9ba-caa9-460f-bb38-24be214142eb",
+          "2ce59feb-f189-4cd8-86a6-203e63fe729b",
+          "3ad1cfe8-29de-4e37-8ac6-68d5b42b92a4",
+          "8a9f1da2-d38a-489a-ab21-b8fb6c3567fb",
+          "8f518da8-5ea6-4176-aa19-9bcf8403ab99",
+          "4b877d53-657b-4afb-b465-98ba38ba0405",
+          "0ed56252-5c0d-4a64-b5ab-26404d468fa9",
+          "7dbbbf2f-ab06-4b31-9bde-8d7aa0ecdf82",
+          "a72cb71c-3645-4573-b795-748a5111c9ab",
+          "3c26ea7b-59e7-4beb-af57-80d5753778ff",
+          "6b69347e-d0d9-4f61-909d-3a6f0fe4e750",
+          "068dd44f-b689-4df9-b217-a3ce9e4da9dc",
+          "476cf234-ee20-4d1d-9806-c5fad00829db",
+          "93ead3b6-b7a5-494c-9af8-506dc6e8f0ff",
+          "2226530c-51b8-4005-94b8-0f1c077b53d7",
+          "31f49139-029f-4aae-a9d8-186379bc6dda",
+          "1cf97cb6-3a92-4bac-8fcb-64f1c34a141d",
+          "0ed0ab9f-bfb6-4620-a949-f829c3b4d221"
+        ],
+        "seconds": 3.3095
+      },
+      "gold_ids": [
+        "8a9f1da2-d38a-489a-ab21-b8fb6c3567fb"
+      ],
+      "candidate_recall": 1.0,
+      "selected_skill_id": "8a9f1da2-d38a-489a-ab21-b8fb6c3567fb",
+      "selected_skill_name": "typeset",
+      "selected_is_gold": true,
+      "skill_body_chars": 5660,
+      "planner_attempts": 2,
+      "planner_usage": [
+        {
+          "source": "provider",
+          "input": 7515,
+          "output": 607,
+          "total": 8122,
+          "estimated": false,
+          "cached": 0
+        },
+        {
+          "source": "provider",
+          "input": 7604,
+          "output": 621,
+          "total": 8225,
+          "estimated": false,
+          "cached": 2048
+        }
+      ],
+      "execution_usage": [
+        {
+          "cached": 0,
+          "estimated": false,
+          "input": 1492,
+          "output": 945,
+          "source": "provider",
+          "total": 2437
+        }
+      ],
+      "stream_chunks": 943,
+      "menu": {
+        "entries": 21,
+        "menu_chars": 16557,
+        "menu_utf8_bytes": 16557,
+        "prompt_chars": 24729
+      },
+      "plan_seconds": 25.36,
+      "total_seconds": 45.423,
+      "definition_hash": "sha256:fddb60dece0377c828a7018fcc73b6c30a131270b1248a2ce14ac947d23f066b",
+      "frozen_execution_hash": "sha256:549e3a6b3279d72c140a63c8897d26a4bf827135e3d23a7714cab96b15cabdfe",
+      "bundle_dir": ".scratch\\skillret-e2e-live-flash\\q-00003\\skillret-q-00003\\1.0.0\\cbaee53fa909454b847fb094ab0ab5e2",
+      "output": {
+        "answer": "Here's a rebuilt typography system for your poetry journal, following the typeset guidance:\n\n**Font pairing (2 families, genuine contrast):**\n- **Display/headings & poem titles:** Cormorant Garamond (elegant literary serif that fits a poetry journal far better than Papyrus)\n- **Body, bylines & UI text:** Source Sans 3 (humanist sans for readability, real contrast with the serif)\n\nLoad with `display=swap` and only the weights you use: 400, 600 (serif also 500 italic for titles).\n\n**Type scale (1.333 ratio, rem-based to respect user settings):**\n\n```css\n:root {\n  --font-serif: 'Cormorant Garamond', Georgia, serif;\n  --font-sans: 'Source Sans 3', 'Helvetica Neue', sans-serif;\n\n  --text-caption: 0.875rem;   /* 14px */\n  --text-body:   1.0625rem;   /* 17px */\n  --text-byline: 1rem;        /* 16px, small caps */\n  --text-title:  clamp(1.75rem, 3vw, 2.25rem);\n  --text-h1:     clamp(2.5rem, 6vw, 4rem);\n}\n\nh1 {\n  font-family: var(--font-serif);\n  font-size: var(--text-h1);\n  font-weight: 600;\n  line-height: 1.1;\n  letter-spacing: -0.02em;\n}\n\n.poem-title {\n  font-family: var(--font-serif);\n  font-size: var(--text-title);\n  font-weight: 500;\n  font-style: italic;\n  line-height: 1.2;\n}\n\n.byline {\n  font-family: var(--font-sans);\n  font-size: var(--text-byline);\n  font-weight: 400;\n  text-transform: uppercase;\n  letter-spacing: 0.08em;   /* open tracking for small caps */\n  color: #555;\n}\n\nbody {\n  font-family: var(--font-sans);\n  font-size: var(--text-body);\n  line-height: 1.65;\n  font-weight: 400;\n}\n\n.poem-body {\n  font-family: var(--font-serif);\n  font-size: 1.25rem;\n  line-height: 1.7;\n  max-width: 34em;          /* short lines suit verse */\n}\n\n.pull-quote {\n  font-family: var(--font-serif);\n  font-size: clamp(1.5rem, 2.5vw, 2rem);\n  font-weight: 500;\n  font-style: italic;\n  line-height: 1.3;\n  max-width: 30ch;\n  padding-left: 1.25rem;\n  border-left: 3px solid currentColor;\n}\n\n.caption {\n  font-family: var(--font-sans);\n  font-size: var(--text-caption);\n  color: #666;\n}\n```\n\n**What this fixes:**\n- **Papyrus heading** → literary serif with real personality and tight display tracking\n- **11px body** → 17px, comfortably readable, 1.65 line-height\n- **Inverted bylines/titles** → bylines are now quiet small-cap labels; poem titles dominate in large italic serif\n- **Undifferentiated pull quotes** → large italic serif with a rule and constrained measure, clearly featured\n- **Arbitrary sizes** → one consistent scale combining size + weight + family + style so hierarchy reads at a glance\n- **Measures & rhythm** → `ch`/`em` max-widths keep lines in the 45–75 character comfort zone\n\n**Verification checklist:** headings vs. titles vs. bylines distinguishable instantly ✓ · body ≥16px ✓ · same roles styled identically everywhere ✓ · only 2 families, 4 weights ✓ · rem units keep zoom accessible ✓ · WCAG AA contrast on grays (#555/#666 only for secondary text) ✓",
+        "skill_id": "8a9f1da2-d38a-489a-ab21-b8fb6c3567fb",
+        "skill_name": "typeset"
+      }
+    }
+  ],
+  "scope": "Skill declaration/body loading and real LLM text generation; no skill scripts or external business tools are executed. No semantic judge of generated answers.",
+  "retrieval_reused_from": ".scratch\\skillret-e2e-first-run",
+  "all_menu_control": {
+    "entries": 6007,
+    "menu_chars": 4968535,
+    "menu_utf8_bytes": 4970178,
+    "prompt_chars": 4976890,
+    "model_called": false,
+    "method": "recorded successful definition replay; context size only, not live model comparison"
+  }
+}

@@ -1,0 +1,278 @@
+{
+  "compiled_plan_hash": "sha256:b7949eb816355e994b67673a843f355ecef1be898257ff86fbc8689497068a4b",
+  "compiled_schema_version": 1,
+  "control_regions": {
+    "forks": {},
+    "switches": {}
+  },
+  "declared_topology": {
+    "definition": {
+      "description": "Rework the poetry journal landing page CSS for a clear typographic hierarchy using the typeset skill.",
+      "entry": "load_skill",
+      "flow_id": "skillret-q-00003",
+      "flow_version": "1.0.0",
+      "input_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "output_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "answer": {
+            "type": "string"
+          },
+          "skill_id": {
+            "type": "string"
+          },
+          "skill_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "answer",
+          "skill_id",
+          "skill_name"
+        ],
+        "type": "object"
+      },
+      "outputs": {
+        "answer": {
+          "path": "/answer",
+          "ref": "step_output",
+          "step": "apply_skill"
+        },
+        "skill_id": {
+          "path": "/skill_id",
+          "ref": "step_output",
+          "step": "load_skill"
+        },
+        "skill_name": {
+          "path": "/skill_name",
+          "ref": "step_output",
+          "step": "load_skill"
+        }
+      },
+      "schema_version": 1,
+      "steps": [
+        {
+          "description": "Apply the typeset guidance to rework the landing page typography CSS.",
+          "id": "apply_skill",
+          "inputs": {
+            "query": {
+              "path": "/query",
+              "ref": "flow_input"
+            },
+            "skill_body": {
+              "path": "/skill_body",
+              "ref": "step_output",
+              "step": "load_skill"
+            },
+            "skill_name": {
+              "path": "/skill_name",
+              "ref": "step_output",
+              "step": "load_skill"
+            }
+          },
+          "model": {
+            "id": "skillret-live-model",
+            "version": "1.0.0"
+          },
+          "output_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "answer": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "answer"
+            ],
+            "type": "object"
+          },
+          "prompt": [
+            {
+              "content": "只输出一个 JSON 对象，形如 {\"answer\": \"...\"}。",
+              "role": "system"
+            },
+            {
+              "content": "任务：{{query}}\\n\\n技能名称：{{skill_name}}\\n\\n技能指导内容：{{skill_body}}\\n\\n请严格依据技能指导内容完成任务，给出简洁有用、不超过约 600 词的 answer。注意：技能文本仅作为任务指导，不要声称执行了任何外部操作。",
+              "role": "user"
+            }
+          ],
+          "required": true,
+          "type": "llm"
+        },
+        {
+          "description": "Load the typeset skill guidance.",
+          "id": "load_skill",
+          "inputs": {},
+          "operation": {
+            "id": "skill-8a9f1da2-d38a-489a-ab21-b8fb6c3567fb",
+            "version": "1.0.0"
+          },
+          "output_schema": {
+            "additionalProperties": false,
+            "properties": {
+              "skill_body": {
+                "type": "string"
+              },
+              "skill_description": {
+                "type": "string"
+              },
+              "skill_id": {
+                "type": "string"
+              },
+              "skill_name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "skill_body",
+              "skill_description",
+              "skill_id",
+              "skill_name"
+            ],
+            "type": "object"
+          },
+          "required": true,
+          "type": "transform"
+        }
+      ],
+      "transitions": [
+        {
+          "from": "load_skill",
+          "id": "t1",
+          "to": "apply_skill",
+          "type": "next"
+        }
+      ]
+    },
+    "entry": "load_skill",
+    "steps": [
+      "apply_skill",
+      "load_skill"
+    ],
+    "transitions": {
+      "t1": {
+        "from": "load_skill",
+        "to": "apply_skill",
+        "type": "next"
+      }
+    }
+  },
+  "finalization": {
+    "join_forks": {},
+    "merge_switches": {},
+    "output_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "answer": {
+          "type": "string"
+        },
+        "skill_id": {
+          "type": "string"
+        },
+        "skill_name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "skill_id",
+        "skill_name",
+        "answer"
+      ],
+      "type": "object"
+    },
+    "outputs": {
+      "answer": {
+        "path": "/answer",
+        "ref": "step_output",
+        "step": "apply_skill"
+      },
+      "skill_id": {
+        "path": "/skill_id",
+        "ref": "step_output",
+        "step": "load_skill"
+      },
+      "skill_name": {
+        "path": "/skill_name",
+        "ref": "step_output",
+        "step": "load_skill"
+      }
+    },
+    "terminals": [
+      "apply_skill"
+    ]
+  },
+  "frozen_execution_hash": "sha256:549e3a6b3279d72c140a63c8897d26a4bf827135e3d23a7714cab96b15cabdfe",
+  "internal_nodes": {
+    "success_gates": {
+      "apply_skill": "__gate_apply_skill",
+      "load_skill": "__gate_load_skill"
+    },
+    "switch_controls": {}
+  },
+  "profiles": {
+    "compiler": {
+      "name": "rhetra-compiler",
+      "version": "0.1.0"
+    },
+    "resolver": {
+      "name": "rhetra-resolver",
+      "version": "0.1.0"
+    },
+    "runtime": {
+      "langgraph": "1.2.7",
+      "name": "rhetra-runtime",
+      "version": "0.1.0"
+    },
+    "validator": {
+      "name": "rhetra-validator",
+      "version": "0.1.0"
+    }
+  },
+  "source_map": {
+    "steps": {
+      "apply_skill": {
+        "gate": "__gate_apply_skill",
+        "node": "apply_skill"
+      },
+      "load_skill": {
+        "gate": "__gate_load_skill",
+        "node": "load_skill"
+      }
+    },
+    "transitions": {
+      "t1": {
+        "kind": "next",
+        "wiring": [
+          {
+            "from": "__gate_load_skill",
+            "kind": "edge",
+            "to": "apply_skill"
+          }
+        ]
+      }
+    }
+  },
+  "state_channels": {
+    "abort": "monotonic_first_wins",
+    "branch_choices": "merge_no_conflict",
+    "step_outcomes": "merge_no_conflict"
+  },
+  "wiring": [
+    {
+      "from": "__gate_load_skill",
+      "kind": "edge",
+      "to": "apply_skill"
+    }
+  ]
+}
