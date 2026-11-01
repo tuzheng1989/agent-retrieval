@@ -185,8 +185,13 @@ def test_cached_embedder_persists_vectors_across_instances(tmp_path: Path):
 
     second = CachedEmbedder(second_inner, db_path=db, identity="m:1")
     assert second.embed_corpus(["alpha", "beta"]) == vectors
+    assert second_inner.texts_seen == []  # 语料入口（"c" 键）全命中，inner 零调用
+    # q/c 分键（R5-P1）：查询是另一入口的向量语义——同文本查询首次必走
+    # inner.embed_query（落 "q" 键），此后命中缓存不再调 inner。
+    assert second.embed_query("alpha") == vectors[0]  # fake 对两入口同值
+    assert second_inner.texts_seen == ["alpha"]
     assert second.embed_query("alpha") == vectors[0]
-    assert second_inner.texts_seen == []  # 全部命中缓存，inner 零调用
+    assert second_inner.texts_seen == ["alpha"]
 
 
 def test_cached_embedder_isolates_identities(tmp_path: Path):

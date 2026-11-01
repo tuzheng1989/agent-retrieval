@@ -99,7 +99,7 @@ def build_fixture(bench: str, *, cache_path: Path) -> dict:
     config = replace(config, dimensions=len(probe))
     cache = CachedEmbedder(
         live, db_path=cache_path,
-        identity=f"{config.provider}:{config.model_name}:{config.dimensions}",
+        identity="|".join(config.identity()),  # R5-P1：身份串含 pooling/前缀 flags
     )
     try:
         vectors: dict[str, list[float]] = {}

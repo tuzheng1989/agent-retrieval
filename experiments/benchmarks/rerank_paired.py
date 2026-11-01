@@ -68,7 +68,7 @@ def build_fusion_embedder() -> tuple[CachedEmbedder, str]:
     cache = CachedEmbedder(
         live,
         db_path=_DEFAULT_CACHE_PATH,
-        identity=f"{config.provider}:{config.model_name}:{config.dimensions}",
+        identity="|".join(config.identity()),  # R5-P1：身份串含 pooling/前缀 flags
     )
     return cache, config.identity()
 

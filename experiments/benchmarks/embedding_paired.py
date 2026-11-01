@@ -140,7 +140,9 @@ class STEmbedder:
 
 
 def st_identity(spec: dict, dimensions: int) -> str:
-    return f"local-st:{spec['repo']}:{dimensions}"
+    # R5-P1：身份串与 API 路径统一 ``|`` 拼接形态（信息不变：local-st + repo + dims）；
+    # 旧 ``:`` 拼接行随键形状变更一并失效（embed-only 重跑即补齐）。
+    return "|".join(("local-st", spec["repo"], str(dimensions)))
 
 
 class CachedLookupEmbedder(CachedEmbedder):
@@ -150,9 +152,10 @@ class CachedLookupEmbedder(CachedEmbedder):
         super().__init__(inner=None, db_path=db_path, identity=identity)  # type: ignore[arg-type]
 
     def embed_corpus(self, texts) -> list[tuple[float, ...]]:
-        from experiments.benchmarks.embedder_cache import _key
+        from experiments.benchmarks.embedder_cache import _cache_key
 
-        keys = [_key(text) for text in texts]
+        # embed-only 会话以语料入口（entry="c"）写入全部向量，lookup 侧按同键读取。
+        keys = [_cache_key("c", text) for text in texts]
         cached = self._load_cached(keys)
         missing = [key for key in keys if key not in cached]
         if missing:
@@ -174,7 +177,7 @@ def build_lookup_embedder(model_name: str) -> tuple[CachedLookupEmbedder, str]:
     with sqlite3.connect(_DEFAULT_CACHE_PATH) as connection:
         row = connection.execute(
             "SELECT identity, dim FROM vectors WHERE identity LIKE ? LIMIT 1",
-            (f"local-st:{spec['repo']}:%",),
+            (f"local-st|{spec['repo']}|%",),  # R5-P1：匹配 | 拼接的新 identity_str 形态
         ).fetchone()
     if row is None:
         raise RuntimeError(
@@ -263,7 +266,7 @@ def build_glme_embedder() -> tuple[CachedEmbedder, str]:
     config = replace(config, dimensions=len(probe))
     cache = CachedEmbedder(
         live, db_path=_DEFAULT_CACHE_PATH,
-        identity=f"{config.provider}:{config.model_name}:{config.dimensions}",
+        identity="|".join(config.identity()),  # R5-P1：身份串含 pooling/前缀 flags
     )
     return cache, config.identity()
 

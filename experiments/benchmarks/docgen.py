@@ -12,8 +12,10 @@ face too. Evaluation here only consumes ranking order, but a real host should
 pass ``declared=<original projection>`` to keep generated text out of the
 adjudication evidence.
 
-Config comes from ``.env`` / environment (host discipline; ``load_env_file``
-in the runners loads it):
+实现已收编为一等组件 ``agent_retrieval.expansion``（extras: ``[docgen]``）——
+HTTP 纪律、提示词模板与解析都住在包里；本文件只留环境组装（``resolve_docgen_config``）、
+jsonl IO（``load_docgen``）、CLI（``main()``）与两个兼容入口。Config comes from
+``.env`` / environment (host discipline; ``load_env_file`` in the runners loads it):
 
   AGENT_RETRIEVAL_DOCGEN_MODEL        required (e.g. glm-5.3-flash)
   AGENT_RETRIEVAL_DOCGEN_BASE_URL     falls back to EMBEDDING_BASE_URL (same gateway)
@@ -31,18 +33,32 @@ import json
 import os
 import sys
 import time
-from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from threading import Lock
-from typing import TypeVar
+
+from agent_retrieval.expansion import (
+    DocGenClient,
+    DocGenConfig,
+    DocGenError,
+    build_docgen,
+    docgen_corpus_text,
+    parse_generated_queries,
+)
 
 _DATA_DIR = Path(__file__).with_name("data")
-_ResourceT = TypeVar("_ResourceT")
 
-
-class DocGenError(RuntimeError):
-    """doc2query 生成调用失败——批处理按类型捕获并落盘已成功部分。"""
+__all__ = [
+    "DocGenConfig",
+    "DocGenError",
+    "build_docgen",
+    "chat_text",
+    "docgen_corpus_text",
+    "generate_queries",
+    "load_docgen",
+    "parse_generated_queries",
+    "resolve_docgen_config",
+]
 
 
 def resolve_docgen_config() -> tuple[str, str, str]:
@@ -68,95 +84,9 @@ def resolve_docgen_config() -> tuple[str, str, str]:
     return base_url, api_key, model
 
 
-def parse_generated_queries(text: str, k: int) -> list[str]:
-    """Split model output into k distinct queries: one per line, numbering stripped.
-
-    Lines that collapse to duplicates or empties are dropped; fewer than k
-    distinct lines is accepted as-is (the model's honest yield beats padding).
-    """
-    queries: list[str] = []
-    for line in text.splitlines():
-        cleaned = line.strip().lstrip("-•*0123456789. )\t")
-        if not cleaned:
-            continue
-        if cleaned.lower() not in {q.lower() for q in queries}:
-            queries.append(cleaned)
-    return queries[:k]
-
-
-def _chat_completion(
-    prompt: str,
-    *,
-    base_url: str,
-    api_key: str,
-    model: str,
-    label: str,
-) -> str:
-    """One chat-completion call under the shared batch-generation discipline.
-
-    Discipline (all offline generators ride this): temperature 0.2, thinking
-    explicitly disabled (GLM-4.5/5.3 reasoning tokens count against max_tokens
-    and silently truncate the answer), 2,000-token budget, backoff retries for
-    everything except auth failures — gateways report transient rate limits as
-    plain 4xx (often not even 429), so any non-auth HTTP error retries.
-    Raises :class:`DocGenError` when retries are exhausted.
-    """
-    try:
-        import requests  # noqa: PLC0415 — 可选实验依赖，与 ApiEmbedder 同模式
-    except ImportError as exc:
-        raise DocGenError(f"{label} 缺依赖 requests；先 pip install requests") from exc
-    # 网关把瞬时限流/上游故障也报成 4xx（rerank 实测教训），除鉴权失败外都退避重试。
-    last_error: Exception | None = None
-    for attempt, pause in enumerate((0, 2.0, 5.0, 10.0)):
-        if pause:
-            time.sleep(pause)
-        try:
-            response = requests.post(
-                f"{base_url}/chat/completions",
-                headers={"Authorization": f"Bearer {api_key}"},
-                json={
-                    "model": model,
-                    "messages": [{"role": "user", "content": prompt}],
-                    "temperature": 0.2,
-                    # GLM-4.5 系是推理模型：thinking token 计入 max_tokens，会
-                    # 把 content 挤空（finish_reason=length）——显式关闭后稳定。
-                    "thinking": {"type": "disabled"},
-                    "max_tokens": 2000,
-                    "stream": False,
-                },
-                timeout=60,
-            )
-            if response.status_code in (401, 403):
-                raise DocGenError(
-                    f"{label} 鉴权失败 (HTTP {response.status_code})，不重试: {response.text[:120]}",
-                )
-            if response.status_code >= 400:
-                # 非 4xx 鉴权错误按瞬时故障处理：记入 last_error 进入退避重试，
-                # 而不是直接抛出（此前的实现让 4xx 也不重试，靠重跑兜底；
-                # 提炼共享函数时对齐注释声明的纪律，长批处理依赖它）。
-                last_error = DocGenError(f"HTTP {response.status_code}: {response.text[:200]}")
-                continue
-            return response.json()["choices"][0]["message"]["content"]
-        except DocGenError:
-            raise
-        except Exception as exc:
-            last_error = exc
-            if attempt == 3:
-                break
-    raise DocGenError(f"{label} 调用失败（已重试 3 次）: {last_error}")
-
-
-PROMPT_TEMPLATE = """You generate realistic user queries for a retrieval index.
-
-Resource:
-Name: {name}
-Description: {description}
-Tags: {tags}
-
-Write {k} distinct questions a user might naturally ask that this resource could
-answer. Vary wording, intent and vocabulary — synonyms, colloquial phrasings,
-different entry angles; do not reuse the resource's own words verbatim in every
-query. English only. One query per line, no numbering, no explanations."""
+def chat_text(config: DocGenConfig, prompt: str) -> str:
+    """自由文本生成的兼容入口：单轮传输基元，返回模型原文（groupdesc/summarize 走此）。"""
+    return DocGenClient(config).complete(prompt)
 
 
 def generate_queries(
@@ -169,14 +99,9 @@ def generate_queries(
     model: str,
     k: int = 5,
 ) -> list[str]:
-    """One chat call → k distinct user queries for the resource."""
-    prompt = PROMPT_TEMPLATE.format(
-        name=resource_name, description=resource_description, tags=resource_tags, k=k,
-    )
-    content = _chat_completion(
-        prompt, base_url=base_url, api_key=api_key, model=model, label="docgen",
-    )
-    return parse_generated_queries(content, k)
+    """One chat call → k distinct user queries for the resource（原签名兼容入口）。"""
+    config = DocGenConfig(base_url=base_url, api_key=api_key, model_name=model)
+    return DocGenClient(config).generate(resource_name, resource_description, resource_tags, k=k)
 
 
 def load_docgen(data_dir: Path, bench: str) -> dict[str, list[str]]:
@@ -192,19 +117,6 @@ def load_docgen(data_dir: Path, bench: str) -> dict[str, list[str]]:
             row = json.loads(line)
             loaded[row["resource_id"]] = list(row["queries"])
     return loaded
-
-
-def docgen_corpus_text(base_corpus_text: Callable[[_ResourceT], str],
-                       expansions: dict[str, list[str]]) -> Callable[[_ResourceT], str]:
-    """Wrap a corpus projection so expansion queries ride on the retrieval face.
-
-    Resources without generated queries fall back to the base projection —
-    partial generation never blocks evaluation.
-    """
-    def corpus_text(resource: object) -> str:
-        extra = expansions.get(resource.id, [])
-        return " ".join((base_corpus_text(resource), *extra)) if extra else base_corpus_text(resource)
-    return corpus_text
 
 
 def main() -> int:

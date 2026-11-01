@@ -33,16 +33,25 @@ _LOCK_KEY = "{prefix}:registry:vector-lock:{snapshot_id}"
 
 def vector_snapshot_id(
     owner_version: str,
-    identity: tuple[str, str, str],
+    identity: Sequence[str],
     corpus_hash: str,
 ) -> str:
-    """不可变快照身份 = hash(owner_version + 嵌入器身份三元组 + 语料 hash)。
+    """不可变快照身份 = hash(owner_version + 嵌入器身份序列 + 语料 hash)。
 
-    任一因子变化（候选集、换嵌入模型/版本、语料文本）都产生新 id → 全量重嵌；
-    全部一致 → 同 id → write-once 只续 TTL。
+    任一因子变化（候选集、换嵌入模型/版本/推理语义、语料文本）都产生新 id → 全量
+    重嵌；全部一致 → 同 id → write-once 只续 TTL。
+
+    哈希输入分两域（B6，跨格式零碰撞）：
+
+    - flags 缺失或空串（``identity`` 三元 / 四元带空 flags——默认配置）：沿用 legacy
+      ``|`` join 串逐位不变，三元时代既有快照零重嵌；
+    - flags 非空（显式 pooling/前缀语义）：legacy join 串 + ``"\\x00v2\\x00"`` + flags。
+      ``\\x00`` 不可能出现在任何 legacy 组件中，两域永不交叠。
     """
-    provider, model, model_version = identity
-    raw = "|".join((owner_version, provider, model, model_version, corpus_hash))
+    parts = list(identity)
+    legacy = "|".join((owner_version, *parts[:3], corpus_hash))
+    flags = parts[3] if len(parts) > 3 else ""
+    raw = legacy + ("\x00v2\x00" + flags if flags else "")
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 

@@ -1,0 +1,21 @@
+{
+  "pairing": {
+    "a": "b5_smoke_a.json",
+    "arm_a": "baseline",
+    "b": "b5_smoke_b.json",
+    "arm_b": "jev",
+    "shared_cases": 20
+  },
+  "metrics": {
+    "mrr": {
+      "mean": -0.083,
+      "ci95": [
+        -0.231,
+        0.0483
+      ],
+      "improved": 1,
+      "tied": 15,
+      "worsened": 4
+    }
+  }
+}

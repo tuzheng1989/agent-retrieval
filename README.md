@@ -126,9 +126,13 @@ wrapped = query_embedder(
     embedder=build_embedder(config),
     run_id="run-123",                        # your execution-scoped id (explicit injection)
     backend=MemoryBackend(),                 # or make_backend(redis_url=..., key_prefix=...)
+    embedder_identity=config.identity(),     # identity tuple names the per-embedder cache namespace
 )
-# wrapped embeds each distinct query text once per run; first embedding failure
-# freezes the vector path for the rest of the run (no retries, replay-deterministic).
+# wrapped embeds each distinct query text once per run; query/corpus entries use
+# disjoint cache keys, and embedders with different identities never share entries.
+# Omit embedder_identity (or pass None) for bypass: no vector-cache reads or writes,
+# while first-embedding failure still freezes the vector path for the rest of the
+# run (no retries, replay-deterministic).
 clear_run_cache()                            # at run teardown
 ```
 

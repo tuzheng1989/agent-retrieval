@@ -32,10 +32,17 @@ def build_embedder(config: EmbeddingConfig) -> Embedder | None:
             batch_size=config.batch_size,
             timeout_seconds=config.timeout_seconds,
             dimensions=config.dimensions,
+            query_prefix=config.query_prefix,
+            corpus_prefix=config.corpus_prefix,
         )
     if config.kind == "local":
         try:
-            return LocalEmbedder(model_dir=config.model_dir)
+            return LocalEmbedder(
+                model_dir=config.model_dir,
+                pooling=config.pooling,
+                query_prefix=config.query_prefix,
+                corpus_prefix=config.corpus_prefix,
+            )
         except (RuntimeError, ImportError) as exc:
             log.warning("[embeddings] 本地嵌入器不可用，向量路按缺席处理: %s", exc)
             return None

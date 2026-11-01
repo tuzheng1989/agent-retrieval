@@ -7,7 +7,7 @@ removes the size/length collinearity that the budget only bounds.
 
 One chat call per group (~18 requests for ``sub``): group key, 30 representative
 member names, 3 representative descriptions → a single sentence, ≤600 chars.
-Same batch discipline as docgen (shared ``_chat_completion``): backoff retries,
+Same batch discipline as docgen (shared ``DocGenClient.complete``): backoff retries,
 thinking disabled, failures not persisted — rerun fills the gaps.
 """
 
@@ -19,13 +19,15 @@ import sys
 from pathlib import Path
 
 from experiments.benchmarks.docgen import (
-    _DATA_DIR,
+    DocGenConfig,
     DocGenError,
-    _chat_completion,
+    chat_text,
     resolve_docgen_config,
 )
 from experiments.benchmarks.run_benchmark import load_benchmark, load_env_file
 from experiments.benchmarks.two_tier import build_groups, skill_group_keys
+
+_DATA_DIR = Path(__file__).with_name("data")
 
 #: Members shown to the model per group; a slice, not a summary — names are the
 #: vocabulary the first tier will match against.
@@ -59,9 +61,8 @@ def generate_description(
             description[:200] for description in member_descriptions[:REPRESENTATIVE_DESCRIPTIONS]
         ),
     )
-    return _chat_completion(
-        prompt, base_url=base_url, api_key=api_key, model=model, label="groupdesc",
-    ).strip()
+    config = DocGenConfig(base_url=base_url, api_key=api_key, model_name=model)
+    return chat_text(config, prompt).strip()
 
 
 def main() -> int:

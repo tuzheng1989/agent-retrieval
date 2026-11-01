@@ -23,13 +23,15 @@ import sys
 from pathlib import Path
 
 from experiments.benchmarks.docgen import (
-    _DATA_DIR,
+    DocGenConfig,
     DocGenError,
-    _chat_completion,
+    chat_text,
     resolve_docgen_config,
 )
 from experiments.benchmarks.jev_rerank import JEV_DESCRIPTION_MAX_CHARS
 from experiments.benchmarks.run_benchmark import load_benchmark, load_env_file
+
+_DATA_DIR = Path(__file__).with_name("data")
 
 PROMPT_TEMPLATE = """You compress one tool's documentation for a retrieval judge.
 
@@ -119,9 +121,8 @@ def summarize_resource(
     prompt = PROMPT_TEMPLATE.format(
         name=name, documentation=documentation, target_chars=target_chars,
     )
-    return _chat_completion(
-        prompt, base_url=base_url, api_key=api_key, model=model, label="summarize",
-    ).strip()
+    config = DocGenConfig(base_url=base_url, api_key=api_key, model_name=model)
+    return chat_text(config, prompt).strip()
 
 
 def window_unique_ids(report_path: Path) -> list[str]:

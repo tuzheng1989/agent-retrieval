@@ -1,0 +1,58 @@
+== 实跑一：judge_parity --skip-live（离线判定一） ==
+== 命令：.venv/Scripts/python.exe -m experiments.benchmarks.judge_parity --skip-live ==
+
+[parity] 4 cases × 9 candidates
+[parity] legacy snapshot -> C:\Users\tuzhe\runspace\agent-retrieval\experiments\judge-parity-legacy.json
+[parity] report -> C:\Users\tuzhe\runspace\agent-retrieval\experiments\judge-parity-report.json
+exit=0
+
+== 实跑二：judge_parity 完整 live（判定一 + 双臂传输层对拍） ==
+== 命令：.venv/Scripts/python.exe -m experiments.benchmarks.judge_parity ==
+
+[parity] 4 cases × 9 candidates
+[parity] legacy snapshot -> C:\Users\tuzhe\runspace\agent-retrieval\experiments\judge-parity-legacy.json
+[parity] population: bodies== max|Δp|=3.000e-02
+[parity] uploaded_contract: bodies== max|Δp|=0.000e+00
+[parity] send_message: bodies== max|Δp|=3.000e-02
+[parity] instruction-probe: bodies== max|Δp|=2.000e-02
+[parity] 判定二 FAIL：请求体不一致或概率超差
+[parity] report -> C:\Users\tuzhe\runspace\agent-retrieval\experiments\judge-parity-report.json
+exit=3
+
+== ======== 主控裁决修订后复跑（概率门 1e-9 → 0.05，量化噪声界 5 倍） ========
+
+== 实跑三：judge_parity --skip-live（判定一应仍 PASS） ==
+[parity] 4 cases × 9 candidates
+[parity] legacy snapshot -> C:\Users\tuzhe\runspace\agent-retrieval\experiments\judge-parity-legacy.json
+[parity] report -> C:\Users\tuzhe\runspace\agent-retrieval\experiments\judge-parity-report.json
+exit=0
+
+== 实跑四：judge_parity 完整 live（修订口径：bodies 硬门 + |Δp| ≤ 0.05，应 exit 0） ==
+[parity] 4 cases × 9 candidates
+[parity] legacy snapshot -> C:\Users\tuzhe\runspace\agent-retrieval\experiments\judge-parity-legacy.json
+[parity] population: bodies== max|Δp|=1.000e-02
+[parity] uploaded_contract: bodies== max|Δp|=2.000e-02
+[parity] send_message: bodies== max|Δp|=4.000e-02
+[parity] instruction-probe: bodies== max|Δp|=3.000e-02
+[parity] report -> C:\Users\tuzhe\runspace\agent-retrieval\experiments\judge-parity-report.json
+exit=0
+
+== 实跑五：judge_parity --jitter-baseline（常驻诊断开关验收） ==
+[parity] 4 cases × 9 candidates
+[parity] legacy snapshot -> C:\Users\tuzhe\runspace\agent-retrieval\experiments\judge-parity-legacy.json
+[jitter] population: max self|Δp|=0.04 over(0/9)={}
+[jitter] uploaded_contract: max self|Δp|=0.01 over(0/9)={}
+[jitter] send_message: max self|Δp|=0.05 over(0/9)={}
+[jitter] instruction-probe: max self|Δp|=0.03 over(0/9)={}
+[parity] report -> C:\Users\tuzhe\runspace\agent-retrieval\experiments\judge-parity-report.json
+exit=0
+
+== 实跑六：judge_parity 完整 live（report 留档恢复为判定二形态） ==
+[parity] 4 cases × 9 candidates
+[parity] legacy snapshot -> C:\Users\tuzhe\runspace\agent-retrieval\experiments\judge-parity-legacy.json
+[parity] population: bodies== max|Δp|=1.000e-02
+[parity] uploaded_contract: bodies== max|Δp|=1.000e-02
+[parity] send_message: bodies== max|Δp|=3.000e-02
+[parity] instruction-probe: bodies== max|Δp|=4.000e-02
+[parity] report -> C:\Users\tuzhe\runspace\agent-retrieval\experiments\judge-parity-report.json
+exit=0

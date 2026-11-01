@@ -31,6 +31,8 @@ class ApiEmbedder:
         batch_size: int = 16,
         timeout_seconds: float = 20.0,
         dimensions: int = 0,
+        query_prefix: str = "",
+        corpus_prefix: str = "",
     ) -> None:
         self._base_url = base_url.rstrip("/")
         self._api_key = api_key
@@ -38,16 +40,19 @@ class ApiEmbedder:
         self._batch_size = batch_size
         self._timeout = timeout_seconds
         self._dimensions = dimensions
+        #: 两路前缀（config 级能力）：查询/语料各自请求前拼接，空前缀拼接是恒等。
+        self._query_prefix = query_prefix
+        self._corpus_prefix = corpus_prefix
 
     def embed_corpus(self, texts: Sequence[str]) -> list[tuple[float, ...]]:
         vectors: list[tuple[float, ...]] = []
         for start in range(0, len(texts), self._batch_size):
-            batch = list(texts[start:start + self._batch_size])
+            batch = [self._corpus_prefix + text for text in texts[start:start + self._batch_size]]
             vectors.extend(self._request(batch))
         return vectors
 
     def embed_query(self, text: str) -> tuple[float, ...]:
-        return self._request([text])[0]
+        return self._request([self._query_prefix + text])[0]
 
     def _request(self, batch: list[str]) -> list[tuple[float, ...]]:
         # requests 是 api extra 的依赖：下沉到调用点惰性导入，让零依赖安装（纯 core

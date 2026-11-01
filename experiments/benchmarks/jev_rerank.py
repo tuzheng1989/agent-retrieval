@@ -210,7 +210,7 @@ def run(args: argparse.Namespace) -> dict:
         cache = CachedEmbedder(
             live_embedder,
             db_path=args.cache_path,
-            identity=f"{config.provider}:{config.model_name}:{config.dimensions}",
+            identity="|".join(config.identity()),  # R5-P1：身份串含 pooling/前缀 flags
         )
         embedder = cache
         embedder_identity = config.identity()

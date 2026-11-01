@@ -1,0 +1,29 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\tuzhe\runspace\agent-retrieval\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\tuzhe\runspace\agent-retrieval
+configfile: pyproject.toml
+plugins: anyio-4.15.1, asyncio-1.4.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 18 items
+
+tests/test_stats_pkg.py::TestPairedBootstrapSeedRegression::test_seed_regression_bitwise PASSED [  5%]
+tests/test_stats_pkg.py::TestPairedBootstrapSeedRegression::test_default_seed_reproducible PASSED [ 11%]
+tests/test_stats_pkg.py::TestPairedBootstrapSeedRegression::test_empty_diffs_rejected PASSED [ 16%]
+tests/test_stats_pkg.py::TestPairedReportPkgSide::test_missing_cases_warn_and_pair_on_shared PASSED [ 22%]
+tests/test_stats_pkg.py::TestPairedReportPkgSide::test_full_overlap_pairs_all_cases PASSED [ 27%]
+tests/test_stats_pkg.py::TestPairedReportPkgSide::test_disjoint_case_sets_raise PASSED [ 33%]
+tests/test_stats_pkg.py::TestPairedReportPkgSide::test_load_arm_cases_reads_caller_path PASSED [ 38%]
+tests/test_ablation_stats.py::TestChanceBaseline::test_single_gold_one_of_eighteen_g_three PASSED [ 44%]
+tests/test_ablation_stats.py::TestChanceBaseline::test_span_zero_means_zero PASSED [ 50%]
+tests/test_ablation_stats.py::TestChanceBaseline::test_span_ge_slack_means_certain PASSED [ 55%]
+tests/test_ablation_stats.py::TestChanceBaseline::test_monotone_in_span_and_g PASSED [ 61%]
+tests/test_ablation_stats.py::TestChanceBaseline::test_rejects_out_of_range_span PASSED [ 66%]
+tests/test_ablation_stats.py::TestPairedBootstrap::test_constant_positive_diff_gives_positive_ci PASSED [ 72%]
+tests/test_ablation_stats.py::TestPairedBootstrap::test_symmetric_diff_straddles_zero PASSED [ 77%]
+tests/test_ablation_stats.py::TestPairedBootstrap::test_deterministic_under_fixed_seed PASSED [ 83%]
+tests/test_ablation_stats.py::TestPairedBootstrap::test_empty_diffs_rejected PASSED [ 88%]
+tests/test_ablation_stats.py::TestPowerReport::test_recovers_known_delta_and_flags_sufficiency PASSED [ 94%]
+tests/test_ablation_stats.py::TestPowerReport::test_zero_sd_small_mcid_needs_zero_extra PASSED [100%]
+
+============================= 18 passed in 1.30s ==============================

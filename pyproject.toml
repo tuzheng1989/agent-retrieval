@@ -30,9 +30,11 @@ dependencies = []
 
 [project.optional-dependencies]
 api = ["requests>=2.28"]
+docgen = ["requests>=2.28"]
+judge = ["requests>=2.28"]
 redis = ["redis>=5.0"]
 local = ["onnxruntime", "transformers", "tokenizers", "numpy"]
-all = ["agent-retrieval[api,redis]"]
+all = ["agent-retrieval[api,redis,docgen,judge]"]
 dev = ["pytest>=8", "pytest-asyncio", "ruff"]
 
 [tool.hatch.build.targets.wheel]
@@ -45,6 +47,7 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 110
 src = ["src", "tests"]
+extend-exclude = ["experiments/archive"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "B", "UP", "ARG"]

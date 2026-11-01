@@ -1,0 +1,29 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\tuzhe\runspace\agent-retrieval\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\tuzhe\runspace\agent-retrieval
+configfile: pyproject.toml
+plugins: anyio-4.15.1, asyncio-1.4.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 18 items
+
+tests/test_judge_port.py::test_stub_judge_satisfies_judge_protocol PASSED [  5%]
+tests/test_judge_port.py::test_instruction_is_passed_through_to_judge PASSED [ 11%]
+tests/test_judge_port.py::test_exact_hit_stops_before_judge_is_called PASSED [ 16%]
+tests/test_judge_port.py::test_tie_preserves_retrieval_order PASSED      [ 22%]
+tests/test_judge_port.py::test_below_minimum_probability_abstains PASSED [ 27%]
+tests/test_judge_port.py::test_missing_candidate_key_raises PASSED       [ 33%]
+tests/test_judge_port.py::test_out_of_range_probability_raises PASSED    [ 38%]
+tests/test_judge_port.py::test_nan_probability_is_rejected_as_out_of_range PASSED [ 44%]
+tests/test_judge_port.py::test_duplicate_candidate_ids_raise PASSED      [ 50%]
+tests/test_judge_port.py::test_empty_shortlist_returns_none PASSED       [ 55%]
+tests/test_judge_port.py::test_minimum_probability_has_no_default PASSED [ 61%]
+tests/test_judge_port.py::test_rank_candidates_hits_flow_through_selector_with_tuple_host_data PASSED [ 66%]
+tests/test_ranking.py::test_rank_orders_by_match_strength_and_annotates_corpus_terms PASSED [ 72%]
+tests/test_ranking.py::test_rank_is_deterministic_and_full_recall_with_vector_path PASSED [ 77%]
+tests/test_ranking.py::test_rank_empty_pool_returns_empty PASSED         [ 83%]
+tests/test_ranking.py::test_embedding_failure_degrades_to_bm25_only_without_raising PASSED [ 88%]
+tests/test_ranking.py::test_exact_identity_tops_independent_of_scores PASSED [ 94%]
+tests/test_core_zero_dep.py::test_core_imports_no_third_party_modules PASSED [100%]
+
+============================= 18 passed in 0.08s ==============================

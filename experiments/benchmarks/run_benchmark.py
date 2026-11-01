@@ -397,7 +397,7 @@ def main() -> int:
         cached = CachedEmbedder(
             embedder,
             db_path=_DEFAULT_CACHE_PATH,
-            identity=f"{config.provider}:{config.model_name}:{config.dimensions}",
+            identity="|".join(config.identity()),  # R5-P1：身份串含 pooling/前缀 flags
         )
         reranker = reranker_from_env()
         reranker_model = os.environ.get("AGENT_RETRIEVAL_RERANK_MODEL", "BAAI/bge-reranker-v2-m3")
@@ -447,7 +447,7 @@ def main() -> int:
                 cached = CachedEmbedder(
                     embedder,
                     db_path=_DEFAULT_CACHE_PATH,
-                    identity=f"{config.provider}:{config.model_name}:{config.dimensions}",
+                    identity="|".join(config.identity()),  # R5-P1：身份串含 pooling/前缀 flags
                 )
                 arms["fusion"] = run_arm(dataset, k_values, embedder=cached, label="fusion",
                                          query_mode=args.query_mode, retriever=args.retriever,

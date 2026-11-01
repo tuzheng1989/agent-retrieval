@@ -1,0 +1,54 @@
+# B2 定向与受影响测试证据（.venv/Scripts/python.exe -m pytest ... -v）
+# 定向: tests/test_api_judge.py
+# 受影响: tests/test_judge_port.py tests/test_core_zero_dep.py
+# 全量: tests/ → 189 passed in 230.14s (exit 0)
+
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\tuzhe\runspace\agent-retrieval\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\tuzhe\runspace\agent-retrieval
+configfile: pyproject.toml
+plugins: anyio-4.15.1, asyncio-1.4.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 31 items
+
+tests/test_api_judge.py::TestJudgeState::test_projects_name_and_description_only PASSED [  3%]
+tests/test_api_judge.py::TestJudgeState::test_empty_instruction_defaults_to_empty_string PASSED [  6%]
+tests/test_api_judge.py::TestJudgeState::test_truncates_description_at_2000_chars PASSED [  9%]
+tests/test_api_judge.py::TestJudgeState::test_question_shape_is_wire_form_noul PASSED [ 12%]
+tests/test_api_judge.py::TestJudgeState::test_duplicate_candidate_ids_raise PASSED [ 16%]
+tests/test_api_judge.py::TestJevJudgeConfig::test_frozen PASSED          [ 19%]
+tests/test_api_judge.py::TestJevJudgeHttp::test_posts_state_plus_model_with_bearer_and_timeout PASSED [ 22%]
+tests/test_api_judge.py::TestJevJudgeHttp::test_instruction_argument_flows_into_state PASSED [ 25%]
+tests/test_api_judge.py::TestJevJudgeHttp::test_judgment_aligns_probabilities_to_candidate_ids PASSED [ 29%]
+tests/test_api_judge.py::TestJevJudgeHttp::test_usage_absent_passes_none_through PASSED [ 32%]
+tests/test_api_judge.py::TestJevJudgeHttp::test_auth_failure_raises_without_retry PASSED [ 35%]
+tests/test_api_judge.py::TestJevJudgeHttp::test_forbidden_raises_without_retry PASSED [ 38%]
+tests/test_api_judge.py::TestJevJudgeHttp::test_retryable_status_then_success PASSED [ 41%]
+tests/test_api_judge.py::TestJevJudgeHttp::test_missing_answer_key_raises_implementation_error PASSED [ 45%]
+tests/test_api_judge.py::TestDependencyAndProtocol::test_missing_dependency_reports_extras PASSED [ 48%]
+tests/test_api_judge.py::TestDependencyAndProtocol::test_satisfies_judge_protocol PASSED [ 51%]
+tests/test_judge_port.py::test_stub_judge_satisfies_judge_protocol PASSED [ 54%]
+tests/test_judge_port.py::test_instruction_is_passed_through_to_judge PASSED [ 58%]
+tests/test_judge_port.py::test_exact_hit_stops_before_judge_is_called PASSED [ 61%]
+tests/test_judge_port.py::test_tie_preserves_retrieval_order PASSED      [ 64%]
+tests/test_judge_port.py::test_below_minimum_probability_abstains PASSED [ 67%]
+tests/test_judge_port.py::test_probability_equal_to_threshold_returns_hit PASSED [ 70%]
+tests/test_judge_port.py::test_missing_candidate_key_raises PASSED       [ 74%]
+tests/test_judge_port.py::test_extra_probability_key_raises PASSED       [ 77%]
+tests/test_judge_port.py::test_out_of_range_probability_raises PASSED    [ 80%]
+tests/test_judge_port.py::test_nan_probability_is_rejected_as_out_of_range PASSED [ 83%]
+tests/test_judge_port.py::test_duplicate_candidate_ids_raise PASSED      [ 87%]
+tests/test_judge_port.py::test_empty_shortlist_returns_none PASSED       [ 90%]
+tests/test_judge_port.py::test_minimum_probability_has_no_default PASSED [ 93%]
+tests/test_judge_port.py::test_rank_candidates_hits_flow_through_selector_with_tuple_host_data PASSED [ 96%]
+tests/test_core_zero_dep.py::test_core_imports_no_third_party_modules PASSED [100%]
+
+============================= 31 passed in 0.20s ==============================
+EXIT=0
+# ruff check src/agent_retrieval/judges/ src/agent_retrieval/__init__.py pyproject.toml tests/test_api_judge.py
+All checks passed!
+RUFF_EXIT=0
+
+# extras all 终值验证
+['agent-retrieval[api,redis,docgen,judge]']

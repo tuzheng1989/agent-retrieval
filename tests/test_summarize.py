@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
 
 from experiments.benchmarks.dataset import Resource
 from experiments.benchmarks.jev_rerank import JEV_DESCRIPTION_MAX_CHARS

@@ -26,10 +26,37 @@ class _FakeResponse:
         return self._payload
 
 
-def test_embedding_config_identity_is_stable_triple():
-    """identity 三元组进入快照 id 与 meta：model_version 缺省回落 model_name。"""
-    assert EmbeddingConfig(kind="api", provider="p", model_name="m").identity() == ("p", "m", "m")
-    assert EmbeddingConfig(kind="api", provider="p", model_name="m", model_version="v1").identity() == ("p", "m", "v1")
+def test_embedding_config_identity_is_stable_four_tuple():
+    """identity 四元组进入快照 id 与 meta：model_version 缺省回落 model_name。
+
+    flags 段（B6 契约扩展）：pooling/双前缀全默认时为空串——前三元不变 + flags
+    空串是旧消费方（三元时代既有快照）兼容的前提。
+    """
+    assert EmbeddingConfig(kind="api", provider="p", model_name="m").identity() == ("p", "m", "m", "")
+    assert EmbeddingConfig(kind="api", provider="p", model_name="m", model_version="v1").identity() == ("p", "m", "v1", "")
+
+
+def test_embedding_config_identity_flags_json_serialization_is_collision_free():
+    """flags 用 JSON 数组规范序列化：``:``/``|``/空串/Unicode 组合无双解碰撞。
+
+    旧式分隔符拼接对 ``("mean","a:b","c")`` 与 ``("mean","a","b:c")`` 双解；
+    JSON 数组结构消除歧义。非 ASCII 前缀按 ensure_ascii=False 原样入串。
+    """
+    base = dict(kind="api", provider="p", model_name="m", model_version="v")
+    assert EmbeddingConfig(**base, pooling="mean", query_prefix="a:b", corpus_prefix="c").identity() != \
+        EmbeddingConfig(**base, pooling="mean", query_prefix="a", corpus_prefix="b:c").identity()
+    assert EmbeddingConfig(**base, query_prefix="a|b", corpus_prefix="c").identity() != \
+        EmbeddingConfig(**base, query_prefix="a", corpus_prefix="b|c").identity()
+    assert EmbeddingConfig(**base, query_prefix="查询").identity()[3] == '["mean","查询",""]'
+    assert EmbeddingConfig(**base, pooling="cls").identity()[3] == '["cls","",""]'
+    assert EmbeddingConfig(**base, query_prefix="x", corpus_prefix="y", pooling="last_token").identity()[3] == \
+        '["last_token","x","y"]'
+
+
+def test_embedding_config_rejects_unknown_pooling():
+    """pooling 非法值构造即 ValueError（配置边界校验，不等到推理期才炸）。"""
+    with pytest.raises(ValueError, match="mean"):
+        EmbeddingConfig(kind="api", provider="p", model_name="m", pooling="bogus")
 
 
 def test_api_embedder_posts_openai_compatible_batch_and_normalizes(monkeypatch):
@@ -64,6 +91,30 @@ def test_api_embedder_posts_openai_compatible_batch_and_normalizes(monkeypatch):
     ]
     # 单条查询与语料同管线：同文本逐位一致（端口契约）。
     assert embedder.embed_query("a") == vectors[0]
+
+
+def test_api_embedder_prepends_query_and_corpus_prefixes(monkeypatch):
+    """两路前缀（config 级能力）：embed_query 请求前拼查询前缀、embed_corpus 拼语料前缀。"""
+    captured: dict = {}
+
+    def fake_post(url, headers=None, json=None, timeout=None):
+        captured.setdefault("batches", []).append(json["input"])
+        inputs = json["input"]
+        return _FakeResponse({"data": [
+            {"index": i, "embedding": [1.0, 0.0]}
+            for i in range(len(inputs))
+        ]})
+
+    monkeypatch.setattr("requests.post", fake_post)
+    embedder = ApiEmbedder(
+        base_url="https://emb.example/v1", api_key="k", model_name="m",
+        query_prefix="查询: ", corpus_prefix="文档: ",
+    )
+
+    embedder.embed_query("推演剧本")
+    embedder.embed_corpus(["a", "b"])
+
+    assert captured["batches"] == [["查询: 推演剧本"], ["文档: a", "文档: b"]]
 
 
 def test_api_embedder_error_is_wrapped_as_query_embedding_error(monkeypatch):
@@ -114,6 +165,31 @@ def test_factory_builds_api_embedder_from_explicit_config():
 
     assert isinstance(build_embedder(config), ApiEmbedder)
     assert vector_available(config) == "api"
+
+
+def test_factory_passes_prefixes_to_api_embedder(monkeypatch):
+    """工厂 api 分支透传双前缀：config 级能力（两路前缀）经装配后两路生效。"""
+    batches: list[list[str]] = []
+
+    def fake_post(url, headers=None, json=None, timeout=None):
+        batches.append(json["input"])
+        return _FakeResponse({"data": [
+            {"index": i, "embedding": [1.0, 0.0]} for i in range(len(json["input"]))
+        ]})
+
+    monkeypatch.setattr("requests.post", fake_post)
+    config = EmbeddingConfig(
+        kind="api", provider="p", model_name="m",
+        base_url="https://emb.example/v1", api_key="k",
+        query_prefix="查询: ", corpus_prefix="文档: ",
+    )
+
+    embedder = build_embedder(config)
+    assert embedder is not None
+    embedder.embed_query("x")
+    embedder.embed_corpus(["y"])
+    embedder.embed_query("z")
+    assert batches == [["查询: x"], ["文档: y"], ["查询: z"]]
 
 
 def test_factory_reports_none_when_api_credentials_missing():

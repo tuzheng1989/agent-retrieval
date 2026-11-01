@@ -19,36 +19,16 @@ from __future__ import annotations
 import argparse
 import json
 import math
-import random
 from pathlib import Path
 
-
-def paired_bootstrap(
-    diffs: list[float],
-    *,
-    iters: int = 10_000,
-    seed: int = 20261022,
-) -> tuple[float, float, float]:
-    """(mean, lo95, hi95) of case-level paired differences via percentile bootstrap.
-
-    Resampling cases (not scores) preserves the pairing; the fixed seed keeps
-    every invocation on this data reproducible bit-for-bit.
-    """
-    if not diffs:
-        raise ValueError("no paired differences to bootstrap")
-    rng = random.Random(seed)
-    n = len(diffs)
-    means: list[float] = []
-    for _ in range(iters):
-        sample = (diffs[rng.randrange(n)] for _ in range(n))
-        means.append(sum(sample) / n)
-    means.sort()
-    mean = sum(diffs) / n
-    return (
-        mean,
-        means[int(0.025 * (iters - 1))],
-        means[int(0.975 * (iters - 1))],
-    )
+# B5 收编：配对统计三函数下沉为库面 ``agent_retrieval.stats``，此处仅转发名。
+# 模块内引用（power_report 的 load_arm_cases、main() 的 paired_report）经转发名
+# 走包实现，行为不变。
+from agent_retrieval.stats import (  # noqa: F401 —— 转发面：paired_bootstrap 模块内已无直调方，但既有导入路径必须保持可用
+    load_arm_cases,
+    paired_bootstrap,
+    paired_report,
+)
 
 
 def chance_baseline(n_groups: int, g: int, gold_group_span: int) -> float:
@@ -68,53 +48,6 @@ def chance_baseline(n_groups: int, g: int, gold_group_span: int) -> float:
     miss = math.comb(n_groups - gold_group_span, g)
     total = math.comb(n_groups, g)
     return 1.0 - miss / total
-
-
-def load_arm_cases(report_path: Path, arm: str) -> dict[str, dict[str, float]]:
-    """``{case_id: per-case score dict}`` for one arm of a runner report."""
-    report = json.loads(report_path.read_text(encoding="utf-8"))
-    cases = report["cases"]
-    return {row["case_id"]: row[arm] for row in cases}
-
-
-def paired_report(
-    path_a: Path,
-    arm_a: str,
-    path_b: Path,
-    arm_b: str,
-    metrics: list[str],
-) -> dict:
-    """Bootstrap CI for arm_a - arm_b on shared cases, per metric."""
-    cases_a = load_arm_cases(path_a, arm_a)
-    cases_b = load_arm_cases(path_b, arm_b)
-    shared = sorted(set(cases_a).intersection(cases_b))
-    if not shared:
-        raise ValueError("the two reports share no case ids — check samplers")
-    missing_a = len(cases_a) - len(shared)
-    missing_b = len(cases_b) - len(shared)
-    if missing_a or missing_b:
-        print(
-            f"[stats] warning: {missing_a} case ids only in A, {missing_b} only in B "
-            f"— pairing on {len(shared)} shared cases",
-        )
-    result: dict[str, object] = {
-        "pairing": {"a": str(path_a.name), "arm_a": arm_a, "b": str(path_b.name),
-                    "arm_b": arm_b, "shared_cases": len(shared)},
-        "metrics": {},
-    }
-    for metric in metrics:
-        diffs = [cases_a[case][metric] - cases_b[case][metric] for case in shared]
-        mean, lo, hi = paired_bootstrap(diffs)
-        improved = sum(1 for diff in diffs if diff > 0)
-        worsened = sum(1 for diff in diffs if diff < 0)
-        result["metrics"][metric] = {
-            "mean": round(mean, 4),
-            "ci95": [round(lo, 4), round(hi, 4)],
-            "improved": improved,
-            "tied": len(shared) - improved - worsened,
-            "worsened": worsened,
-        }
-    return result
 
 
 def hit_rate_report(report_path: Path, arm: str = "two_tier") -> dict:

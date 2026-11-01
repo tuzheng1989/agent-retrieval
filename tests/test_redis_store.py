@@ -4,6 +4,7 @@ Redis 交互全走异步替身客户端（实现 pipeline/GET/SET NX/HGETALL 实
 不依赖真实 Redis。键域模板是存储契约：断言逐字节形状。
 """
 
+import hashlib
 import json
 
 import pytest
@@ -103,6 +104,33 @@ async def test_snapshot_id_changes_with_any_identity_factor():
     assert vector_snapshot_id(*base) != vector_snapshot_id("v2", *base[1:])
     assert vector_snapshot_id(*base) != vector_snapshot_id(base[0], ("p", "m", "mv2"), base[2])
     assert vector_snapshot_id(*base) != vector_snapshot_id(base[0], base[1], "corpus2")
+
+
+def test_snapshot_id_default_identity_matches_legacy_hash_byte_for_byte():
+    """默认 identity（flags 空串）哈希输入与三元时代逐位一致：既有 write-once 快照零重嵌。"""
+    legacy = vector_snapshot_id("v1", ("p", "m", "mv"), "corpus")
+    default = vector_snapshot_id("v1", ("p", "m", "mv", ""), "corpus")
+    assert legacy == default
+    assert legacy == hashlib.sha256(b"v1|p|m|mv|corpus").hexdigest()
+
+
+def test_snapshot_id_non_default_flags_split_hash_domain():
+    """flags 非空切新哈希输入域（legacy join + ``\\x00v2\\x00`` + flags）：显式推理语义必分化。
+
+    ``\\x00`` 不可能出现在任何 legacy 组件中，跨格式无碰撞；新旧两域各自保持确定性。
+    """
+    flags = '["cls","",""]'
+    legacy = vector_snapshot_id("v1", ("p", "m", "mv"), "corpus")
+    flagged = vector_snapshot_id("v1", ("p", "m", "mv", flags), "corpus")
+    assert flagged != legacy
+    assert flagged == vector_snapshot_id("v1", ("p", "m", "mv", flags), "corpus")  # 确定性
+    assert flagged == hashlib.sha256(
+        ("v1|p|m|mv|corpus" + "\x00v2\x00" + flags).encode("utf-8"),
+    ).hexdigest()
+    # v2 域内：owner / corpus / flags 任一变化同样分化。
+    assert flagged != vector_snapshot_id("v2", ("p", "m", "mv", flags), "corpus")
+    assert flagged != vector_snapshot_id("v1", ("p", "m", "mv", flags), "corpus2")
+    assert flagged != vector_snapshot_id("v1", ("p", "m", "mv", '["last_token","",""]'), "corpus")
 
 
 def test_corpus_hash_is_order_independent_and_key_sensitive():

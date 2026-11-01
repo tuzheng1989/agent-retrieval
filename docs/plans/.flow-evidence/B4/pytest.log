@@ -1,0 +1,14 @@
+..........................                                               [100%]
+26 passed in 0.28s
+
+=== smoke: 薄壳导入面 ===
+shell ok
+smoke exit=0
+
+=== ruff check ===
+All checks passed!
+ruff exit=0
+
+=== 消费方回归（薄壳直接消费方：two_tier / golden_gate / benchmarks）===
+.venv/Scripts/python.exe -m pytest tests/test_two_tier.py tests/test_golden_gate.py tests/test_benchmarks.py -q
+40 passed in 216.29s, exit=0
