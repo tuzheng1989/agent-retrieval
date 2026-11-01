@@ -36,3 +36,6 @@ experiments/two-tier-*.json
 
 # 嵌入配对实验报告（可经 embedding_paired 复现）
 experiments/emb-paired-*.json
+
+# 对拍产物（判定一冻结参照与双臂报告，可经 judge_parity 再生）
+experiments/judge-parity-*.json

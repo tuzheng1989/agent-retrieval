@@ -1,0 +1,84 @@
+{
+  "overall_quality": "不通过。方案覆盖了主要批次、依赖和验收方向，但缓存、内容寻址、现有调用方和迁移依赖存在影响正确性或可执行性的缺口。",
+  "score": 5.5,
+  "issues": [
+    {
+      "priority": "P1",
+      "location": "docs/plans/sdk-p0-plan.md:111-114",
+      "title": "前缀下沉后，Run 缓存会混用查询和语料向量",
+      "evidence": "src/agent_retrieval/run/cache.py:181-226 对 embed_query 和 embed_corpus 使用相同的 run_id 与原始文本作为缓存键；src/agent_retrieval/core/ranking.py:104-105 先嵌入语料再嵌入查询。",
+      "impact": "当 query_prefix 与 corpus_prefix 不同，且查询文本与某条语料相同时，查询会命中语料向量，绕过查询前缀。方案却明确要求不修改缓存，因此新增功能可在正常检索路径中产生错误结果。",
+      "recommendation": "区分查询和语料缓存键，并处理同一 Run 中嵌入器配置变化的身份隔离；增加同文本、不同前缀的端到端缓存测试。"
+    },
+    {
+      "priority": "P1",
+      "location": "docs/plans/sdk-p0-plan.md:110-111",
+      "title": "flags 的分隔符编码允许不同配置产生同一快照身份",
+      "evidence": "方案使用 f\"{pooling}:{query_prefix}:{corpus_prefix}\"，但没有限制或转义前缀中的冒号。例如 query_prefix=\"a:b\", corpus_prefix=\"c\" 与 query_prefix=\"a\", corpus_prefix=\"b:c\" 都得到 mean:a:b:c。",
+      "impact": "不同的实际嵌入输入可得到相同 identity 和 write-once 快照 ID，导致错误复用旧向量，违反方案的内容寻址目标。",
+      "recommendation": "对非默认配置采用无歧义的规范序列化或长度编码，并测试含冒号、竖线、空串和 Unicode 的碰撞案例；保留默认配置的旧快照 ID。"
+    },
+    {
+      "priority": "P1",
+      "location": "docs/plans/sdk-p0-plan.md:80-84",
+      "title": "docgen 兼容入口无法替代两个调用方的通用文本生成",
+      "evidence": "experiments/benchmarks/groupdesc.py:55-64 和 experiments/benchmarks/summarize.py:119-124 分别将自己的提示词传给 _chat_completion，并消费返回的自由文本。方案要求改用 generate_queries(config, name, description, tags)，该入口却调用 docgen 专用模板并返回查询列表。experiments/benchmarks/docgen.py:254 仍按旧签名调用 generate_queries，而方案同时要求删除该函数并保留 main。",
+      "impact": "按方案实施会改变 groupdesc 和 summarize 的任务与返回类型，并使 docgen CLI 的调用签名不匹配。现有 summarize 测试不覆盖其生成调用，不能证明这些路径可用。",
+      "recommendation": "抽取共用的通用文本生成传输能力，保留各调用方原有提示词和字符串返回值；为 docgen CLI 保留或明确迁移旧签名，并用替身 HTTP 验证三个实际生成路径。"
+    },
+    {
+      "priority": "P1",
+      "location": "docs/plans/sdk-p0-plan.md:95-100",
+      "title": "paired_report 平移遗漏其文件读取依赖",
+      "evidence": "experiments/benchmarks/ablation_stats.py:80-89 的 paired_report 调用同文件的 load_arm_cases；方案只将 paired_bootstrap 和 paired_report 移到包内，并把其余代码留在 experiments。",
+      "impact": "直接平移后，包内 paired_report 无法解析 load_arm_cases，调用时报 NameError。现有 tests/test_ablation_stats.py 未调用 paired_report，方案中的新增测试也只覆盖 bootstrap。",
+      "recommendation": "一并迁移或重新设计该依赖，避免包反向依赖 experiments；增加从包导入 paired_report 并读取两份报告的测试。"
+    },
+    {
+      "priority": "P1",
+      "location": "docs/plans/sdk-p0-plan.md:44-56",
+      "title": "Judge 端口无法表达 state 构造所需的 retrieval_instruction",
+      "evidence": "B1 的 Judge.judge 只接收 query 和 candidates，B2 的 judge_state 却需要 task、retrieval_instruction 和 candidates；JevJudgeConfig 也没有该字段。现有 experiments/benchmarks/jev_rerank.py:71-74 对 ToolRet 使用 case.instruction。",
+      "impact": "通用 Judge 调用路径没有方式传入每次请求的检索指令；B3 固定空串也不能发现信息丢失。需要携带指令的任务会得到与现有评测不同的输入。",
+      "recommendation": "明确指令是逐次调用参数还是预先合并进 query 的宿主职责，并贯穿 Protocol、JevJudge、对拍和非空指令测试。"
+    },
+    {
+      "priority": "P1",
+      "location": "docs/plans/sdk-p0-plan.md:62-68",
+      "title": "两臂共用新构造器无法验证现有 Judge 语义是否保留",
+      "evidence": "B3 要求 SDK 臂也使用新 judge_state。现有 experiments/jev_retrieval.py:92-119 使用 user_goal、use_when、avoid_when 和直接执行任务的判定；experiments/benchmarks/jev_rerank.py:71-94 则使用 task、retrieval_instruction、tags 和具体步骤判定，两者提示语义不同。",
+      "impact": "即使新构造器遗漏字段或改变判定问题，两臂仍会发出相同错误输入并通过对拍；该测试只能比较相同输入下的传输与响应，不能证明与哪一条既有实现等价。",
+      "recommendation": "明确选定并记录要继承的原始判定语义及有意改变的部分；保留独立的旧实现或冻结请求样本作为参照，再对新构造器做字段、提示词和响应映射对照。"
+    },
+    {
+      "priority": "P2",
+      "location": "docs/plans/sdk-p0-plan.md:112-119",
+      "title": "CLS pooling 在左填充批次中可能取到 padding",
+      "evidence": "方案规定 cls 使用 last_hidden[:, 0]，同时要求支持左右 padding；左填充时，短序列的第 0 个位置可能是 pad。",
+      "impact": "同一文本的向量可能随批次中其他文本长度改变，影响检索结果。现有验收只要求 last_token 覆盖两种 padding。",
+      "recommendation": "明确 CLS 所对应的有效 token 位置和 tokenizer 前提，增加左填充时单条与混合长度批次的一致性测试。"
+    },
+    {
+      "priority": "P2",
+      "location": "docs/plans/sdk-p0-plan.md:26-33",
+      "title": "exact 短路的接口和验收表述不一致",
+      "evidence": "select_with_judge 的参数已经是 Judgment，但验收要求 exact 命中时不调用 judgment。现有 experiments/jev_retrieval.py:196-199 是在调用 judge.judge 前由编排层检查 exact。",
+      "impact": "仅靠接收已计算 Judgment 的辅助函数，无法避免外部 Judge 请求；实现者无法从当前接口判断如何满足不调用 Judge 的验收要求。",
+      "recommendation": "明确将短路置于调用方编排，或设计可延迟调用 Judge 的接口；用会记录调用次数的替身测试 exact 路径。"
+    },
+    {
+      "priority": "P2",
+      "location": "docs/plans/sdk-p0-plan.md:110-111",
+      "title": "默认 identity 的公开返回值仍从三元组变为四元组",
+      "evidence": "src/agent_retrieval/embedders/config.py:31-33 当前返回三元组；方案将默认值也改为四元组，只在 vector_snapshot_id 中忽略空 flags。",
+      "impact": "旧快照哈希可以保持不变，但外部调用方若对 identity 做三元解包或直接比较三元组，将发生兼容性变化；方案所称默认身份不变仅对指定哈希路径成立。",
+      "recommendation": "明确标注公开接口的兼容性变更和迁移方式，或选择保留默认返回形状的设计；分别测试公开返回值与快照 ID。"
+    }
+  ],
+  "suggestions": [
+    "为 B2/B3 分别验证实际线协议、响应解析和所选旧判定语义。SDK 使用自身序列化器，逐字节比较还需明确两臂如何捕获并统一实际发送的编码。",
+    "为 B6 补充非法 pooling 值、空候选、重复候选 ID、缺失或非有限概率等边界契约，并覆盖失败路径。",
+    "在 B4 中明确 DocGenConfig.identity 与 corpus_hash 的实际连接方式。当前 src/agent_retrieval/stores/redis_store.py:49-52 只对传入文本计算 hash。",
+    "重新核对各批次实际修改文件与验收清单；本次为只读静态评审，未执行 live 对拍或修改代码。"
+  ]
+}

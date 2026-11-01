@@ -1,0 +1,26 @@
+{
+  "overall_quality": "不通过。上一轮三项问题均已在方案中作出针对性修订，但新增前缀语义尚未穿透实验侧缓存；向量快照的身份序列化也仍存在确定性碰撞。",
+  "score": 7.4,
+  "issues": [
+    {
+      "priority": "P1",
+      "location": "docs/plans/sdk-p0-plan.md:124-135",
+      "title": "前缀与身份隔离未穿透实验侧持久化缓存",
+      "evidence": "方案为 API 和本地嵌入器增加 query_prefix、corpus_prefix，并只列出 Run 缓存的入口与身份分键。现有 experiments/benchmarks/embedder_cache.py:66-70 将查询和语料送入同一个 _embed，:85-86 在缓存未命中时始终调用 inner.embed_corpus，因此查询入口也会使用语料前缀；:75-77 的键只基于原文。多个装配点还以 provider:model_name:dimensions 构造缓存身份，例如 experiments/benchmarks/run_benchmark.py:397-400，未包含 pooling 和前缀。tests/test_benchmarks.py:179-189 现有断言也要求查询与语料共享同一缓存值。",
+      "impact": "通过该包装器评测非对称前缀时，查询会得到语料侧向量；更改 pooling 或前缀后还可能复用旧配置的 SQLite 向量，导致实验结果与实际配置不符。方案的迁移清单和回归验收均未覆盖这一受影响路径。",
+      "recommendation": "将实验缓存及其装配点列入 B6 迁移范围：查询未命中调用 inner.embed_query，按入口和完整向量语义身份隔离持久化与内存键，并处理只读 CachedLookupEmbedder 和旧缓存兼容。更新跨入口共享断言，增加非对称前缀、不同 pooling 和跨实例重开缓存的验证。"
+    },
+    {
+      "priority": "P1",
+      "location": "docs/plans/sdk-p0-plan.md:123-125",
+      "title": "向量快照身份仍用分隔符拼接，存在跨字段碰撞",
+      "evidence": "方案对 Run 缓存改用完整身份的 JSON 序列化，但 vector_snapshot_id 仍规定沿用 join 并仅在 flags 非空时追加。现有 src/agent_retrieval/stores/redis_store.py:34-46 以竖线连接 owner_version、provider、model、model_version 和 corpus_hash；EmbeddingConfig 的身份字段均为字符串。相同 owner_version、corpus_hash 和非空 flags 下，身份 (\"a|b\", \"c\", \"v\", flags) 与 (\"a\", \"b|c\", \"v\", flags) 的拼接结果相同。",
+      "impact": "不同嵌入器身份会产生相同的 write-once 快照 ID，无法可靠区分或共存，可能复用不匹配的语料向量。对 flags 内部采用 JSON 编码并不能消除完整身份的跨字段碰撞。",
+      "recommendation": "明确快照 ID 的无歧义编码和版本迁移策略，兼顾方案要求的既有默认快照兼容；若保留旧编码，应明确限制或处理含分隔符的旧身份。增加上述碰撞对的快照 ID 及发布、读取隔离用例。"
+    }
+  ],
+  "suggestions": [
+    "上一轮关于 bypass 首败冻结、Run 身份元组规范序列化和超长描述样本的三项发现，当前方案均已明确修订并补充相应用例。",
+    "本次为只读静态评审；核对了方案、项目约定、相关实现与测试锚点，未修改文件，也未运行测试套件或 live 对拍。"
+  ]
+}

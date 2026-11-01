@@ -1,0 +1,34 @@
+{
+  "overall_quality": "不通过。上一轮六项问题均有对应修订，但默认禁缓存分支会破坏既有的 Run 首败冻结语义，新的身份摘要序列化仍存在确定性碰撞；对拍要求的长描述样本也不在指定数据源中。",
+  "score": 7.4,
+  "issues": [
+    {
+      "priority": "P1",
+      "location": "docs/plans/sdk-p0-plan.md:127-128",
+      "title": "默认禁缓存分支绕过了 Run 首败冻结",
+      "evidence": "方案规定 embedder_identity=None 时，embed_query 和 embed_corpus 直接穿透 inner，且这是公开入口的默认行为。现有 src/agent_retrieval/run/cache.py:194-198、217-220 在内层抛出 QueryEmbeddingError 时调用 _freeze；第 230-233 行写入降级标记并计数，第 257-258 行依靠标记阻止同一 Run 恢复后再次装配。tests/test_run_cache.py:131-173 覆盖了这两条入口的冻结行为。",
+      "impact": "按方案直接返回 inner 的调用结果时，默认调用路径中的嵌入失败不会写入降级标记或计数，同一 Run 下次装配会再次请求嵌入服务，与方案要求保留的既有回归断言冲突。",
+      "recommendation": "明确 bypass 仅跳过向量缓存读写，仍需在两条入口捕获 QueryEmbeddingError、调用 _freeze 并重新抛出；区分向量缓存与降级标记。以不传身份的公开入口分别验证查询和语料失败后的标记、计数及再次装配结果。"
+    },
+    {
+      "priority": "P1",
+      "location": "docs/plans/sdk-p0-plan.md:123,127-129",
+      "title": "Run 缓存身份摘要的整体序列化仍可碰撞",
+      "evidence": "方案只对 flags 内部使用 JSON 编码，传给公开入口的摘要仍由 \"|\".join(identity()) 计算。EmbeddingConfig 的 provider、model_name 和 model_version 均为字符串，见 src/agent_retrieval/embedders/config.py:17-23、31-33。例如身份 (\"a|b\", \"c\", \"v\", \"\") 与 (\"a\", \"b|c\", \"v\", \"\") 不同，但 join 结果均为 \"a|b|c|v|\"，因此摘要完全相同。",
+      "impact": "同一 Run 中使用这两个不同身份时，同入口同文本会命中相同的两级缓存键，仍可能复用错误向量；截取摘要前进行哈希不能消除这种输入序列化碰撞。",
+      "recommendation": "对完整身份元组采用无歧义的规范序列化后再计算摘要，并明确宿主和包装器各自是否负责摘要，避免重复哈希。增加上述跨字段竖线碰撞用例，通过 query_embedder 验证不同身份在清空一级缓存前后均相互隔离。"
+    },
+    {
+      "priority": "P2",
+      "location": "docs/plans/sdk-p0-plan.md:68-70",
+      "title": "指定对拍数据源不包含要求的超长描述样本",
+      "evidence": "方案指定 experiments/jev_cases.json 作为数据源，同时要求样本包含超过 2000 字符的 description。该文件的八条资源描述均为简短句子，没有超过截断上限的描述；原实现 experiments/benchmarks/jev_rerank.py:55、67-68 确有 2000 字符截断逻辑。",
+      "impact": "仅按指定数据源运行对拍，无法验证新旧请求在截断边界上的一致性，也无法满足方案自身的样本要求。",
+      "recommendation": "明确在离线冻结样本中构造或另存超过 2000 字符的候选，并说明如何将其同时适配旧 Resource 与新 JudgedCandidate。断言两侧截断后的 description 一致，并保留非空 use_when 和 avoid_when 的覆盖。"
+    }
+  ],
+  "suggestions": [
+    "上一轮关于 item_id 数据层、无身份自定义嵌入器禁共享、公开装配入口、候选字段投影、受影响测试迁移及 docgen 参数名与消费方测试的六项发现，当前方案均已明确作出对应修订。",
+    "本次为只读静态评审，核对了方案、项目约定、相关代码和测试锚点；未修改文件，也未运行测试套件或 live 对拍。"
+  ]
+}

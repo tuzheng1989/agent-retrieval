@@ -1,0 +1,59 @@
+{
+  "overall_quality": "不通过。上一轮八项发现均有对应修订，但判停辅助的回调仍作用于错误的数据层；Run 缓存的自定义身份和公开装配入口也未形成可执行的隔离契约。此外，语义对拍与旧请求的候选字段存在冲突，部分受影响的调用和测试尚未纳入验收。",
+  "score": 7.0,
+  "issues": [
+    {
+      "priority": "P1",
+      "location": "docs/plans/sdk-p0-plan.md:29-40",
+      "title": "判停辅助仍将候选命中对象传给了宿主数据的 ID 回调",
+      "evidence": "方案要求按 rank_candidates 的 item_id 风格传入回调，但第 32 行规定使用 [item_id(h) for h in hits]，第 40 行又以 item_id=lambda x: x[0] 为非对象型宿主数据示例。src/agent_retrieval/core/ranking.py:35-46 的命中对象是 CandidateHit，其宿主数据保存在 hit.item；同文件第 61-65 行的 item_id 接收的是宿主数据 T。",
+      "impact": "对 rank_candidates 返回的真实结果执行方案中的列表推导时，lambda x: x[0] 会收到不可下标访问的 CandidateHit，不能完成上一轮要求的主要组合路径。",
+      "recommendation": "明确 hits 为 Sequence[CandidateHit[T]]、item_id 为 Callable[[T], str]，通过 item_id(hit.item) 提取 ID；测试实际调用 rank_candidates 后，将其结果和同一个宿主数据回调传给 select_with_judge。"
+    },
+    {
+      "priority": "P1",
+      "location": "docs/plans/sdk-p0-plan.md:125-127",
+      "title": "固定字符串 custom 无法实现自定义嵌入器的禁共享语义",
+      "evidence": "方案要求自定义 Embedder 提供身份或传入固定字符串 \"custom\"，并把该身份摘要放入一级与后端缓存键。src/agent_retrieval/run/cache.py:181-200、203-226 显示两级缓存都以所构造的键读写；方案没有为 \"custom\" 定义绕过读写或唯一命名空间的执行分支。",
+      "impact": "同一 Run 内两个无身份的不同自定义嵌入器都传 \"custom\" 时，同入口同文本仍产生相同键并复用彼此的向量，清空一级缓存后也会从后端读到错误结果。上一轮要求的自定义 Embedder 隔离尚未落实。",
+      "recommendation": "将无稳定身份定义为明确的禁缓存分支，或要求宿主提供能唯一代表向量语义的身份；不要用所有实例共享的固定字符串表示隔离。增加两个不同自定义嵌入器在同 Run 中访问同一文本、清空一级缓存后再次访问的测试。"
+    },
+    {
+      "priority": "P1",
+      "location": "docs/plans/sdk-p0-plan.md:126-127",
+      "title": "嵌入器身份没有穿透现有公开装配入口",
+      "evidence": "方案要求 RunCachedEmbedder 新增必填 embedder_identity，并称由 query_embedder 装配处从 config 传入。实际 src/agent_retrieval/run/cache.py:240-261 的 query_embedder 只接收 embedder、run_id 和 backend，既没有 config 也没有身份参数；README.md:125 和 tests/test_run_cache.py 多处通过这个入口装配。方案的调用面枚举没有规定如何修改该入口及其调用方。",
+      "impact": "照列出的修改，query_embedder 无法构造新增必填参数的包装器，现有公开调用路径会失败；即使实现者临时填入常量，也会重新引入缓存污染。身份参数的公开兼容性和迁移方式目前无法从方案确定。",
+      "recommendation": "明确 query_embedder 的身份参数、缺省行为和身份序列化方式，并从宿主向该入口传入；列出 README、文档和测试调用点的迁移。以公开入口覆盖不同身份隔离及清空一级缓存后的后端恢复。"
+    },
+    {
+      "priority": "P1",
+      "location": "docs/plans/sdk-p0-plan.md:49,68-70",
+      "title": "旧请求对拍只允许删除 tags，但新候选声明面还增加了字段",
+      "evidence": "方案第 49 行称新候选面为 id、name、description、use_when、avoid_when 五字段，第 68 行则要求与旧请求的差异仅限删除 tags。实际 experiments/benchmarks/jev_rerank.py:71-80 的每个候选只有 name、description、tags；旧实现还在第 67-68 行默认将 description 截断到 2000 字符。",
+      "impact": "若按五字段构造新 state，完整请求比较会出现新增 id、use_when、avoid_when 等未登记差异；使用较长描述时还可能出现截断差异。按当前验收规则，无法同时满足五字段进入请求和只有 tags 差异两项要求。",
+      "recommendation": "明确 JudgedCandidate 的字段如何投影到请求 state：若只保留旧版 name、description，应写明其他字段不进入 state；若要传入新增字段，应登记为有意语义变化并调整对拍标准。对拍样本应包含非空 use_when、avoid_when 和超过截断上限的 description。"
+    },
+    {
+      "priority": "P2",
+      "location": "docs/plans/sdk-p0-plan.md:131,141",
+      "title": "受缓存契约影响的既有测试清单仍不完整",
+      "evidence": "方案允许更新 test_run_cache 的键形状用例，但 tests/test_run_cache.py:176-187 还明确要求相同文本在查询与语料入口共享向量，和方案第 140 行要求的 q/c 分键相反。若 query_embedder 按新身份契约增加必填参数，同文件其他现有装配调用也需要调整。",
+      "impact": "仅更新方案列出的键形状用例，旧的跨入口共享断言仍会失败；若身份参数必填，多处测试还会在执行断言前因调用签名不符失败。",
+      "recommendation": "将跨入口共享用例和受 query_embedder 新签名影响的装配调用纳入迁移清单；保留其余测试的回归断言，并以不同查询/语料向量验证新的分键行为。"
+    },
+    {
+      "priority": "P2",
+      "location": "docs/plans/sdk-p0-plan.md:90-100",
+      "title": "docgen 兼容签名仍改变了可按关键字传入的参数名，两个消费方的生成路径也未列入验收",
+      "evidence": "方案称保留原签名，却将前三个参数写成 name、description、tags；原函数 experiments/benchmarks/docgen.py:162-170 的名称为 resource_name、resource_description、resource_tags，三者均可按关键字传入。另在第 91 行要求改造 groupdesc 和 summarize，但第 94-100 行只要求其既有测试通过；tests/test_summarize.py:1-15 覆盖测量和加载，未覆盖 summarize_resource 的生成调用。",
+      "impact": "使用原参数名的关键字调用会因参数名变化失败。现有测试通过也不能证明 groupdesc 和 summarize 的新传输装配能执行、原提示词能到达客户端。",
+      "recommendation": "兼容薄壳保留原有三个参数名；分别用替身调用 groupdesc 和 summarize 的实际生成函数，验证提示词、配置传递及自由文本返回。"
+    }
+  ],
+  "suggestions": [
+    "上一轮关于 API 双前缀、后端语料命中回写、重复 ID 校验和 paired_report 的 metrics 参数，当前方案已有明确修订；实施时仍应按新契约验证。",
+    "B3 的离线冻结样本应同时记录请求 payload 和独立的响应键到资源 ID 的映射：后者不是请求 payload 本身，但需要与候选顺序一起核验。",
+    "本次为只读静态评审，核对了当前方案、项目约定及相关代码和测试锚点；未修改文件，也未执行 live 对拍或测试套件。"
+  ]
+}

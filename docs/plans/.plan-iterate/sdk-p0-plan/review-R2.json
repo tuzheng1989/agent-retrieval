@@ -1,0 +1,76 @@
+{
+  "overall_quality": "不通过。方案已回应上一轮的大部分发现，但 Run 缓存仍缺少嵌入器身份隔离，docgen CLI 兼容签名和 Judge 辅助函数与现有调用面不匹配；部分验收条件也与现有测试或函数签名冲突。",
+  "score": 6.5,
+  "issues": [
+    {
+      "priority": "P1",
+      "location": "docs/plans/sdk-p0-plan.md:122-133",
+      "title": "Run 缓存只区分入口，仍会混用不同嵌入器配置的向量",
+      "evidence": "方案的新键只包含 run_id、q/c 和原文哈希，没有嵌入器身份。src/agent_retrieval/run/cache.py:176-190 的包装器接受任意 inner，进程内和后端缓存均按该键共享；EmbeddingConfig.identity() 的新 flags 没有传入缓存。",
+      "impact": "同一 Run 中替换模型、pooling 或前缀后，同入口同文本仍会命中旧向量；换 worker 后后端缓存也有相同风险。上一轮要求的配置身份隔离尚未落实。",
+      "recommendation": "将稳定的嵌入器身份贯穿包装器、一级缓存和后端缓存键；为自定义 Embedder 明确由宿主提供身份或禁用共享缓存的契约。测试同 Run、同入口、同文本但配置不同，以及清空一级缓存后的隔离。"
+    },
+    {
+      "priority": "P1",
+      "location": "docs/plans/sdk-p0-plan.md:89-98",
+      "title": "docgen 的新兼容入口仍不兼容原 CLI 调用签名",
+      "evidence": "方案定义 generate_queries(config, name, description, tags)，却要求 docgen.py 的 main 零改动。实际 experiments/benchmarks/docgen.py:254-256 传入三个位置参数和 base_url、api_key、model、k 关键字参数；原函数签名见同文件 162-171 行。",
+      "impact": "按方案实现后，docgen CLI 生成路径会因参数不匹配抛 TypeError，且 --k 无法传到新配置。现有 tests/test_docgen.py 只覆盖解析与语料拼接，不能发现此问题。",
+      "recommendation": "让薄壳保留原签名并由其构造 DocGenConfig，或者明确修改 main 及其 k 传递方式；用替身 HTTP 执行 CLI 的实际生成路径，并分别覆盖 groupdesc 和 summarize 的生成调用。"
+    },
+    {
+      "priority": "P1",
+      "location": "docs/plans/sdk-p0-plan.md:28-34",
+      "title": "判停辅助函数无法按方案所述读取现有排序结果的 ID",
+      "evidence": "方案以 {hit.id} 校验概率键，并说辅助函数泛化自 experiments/jev_retrieval.py:139-152。现有 src/agent_retrieval/core/ranking.py:35-46 的 CandidateHit 保存的是泛型 item，没有 id 字段；原实现使用 hit.item.id，rank_candidates 的 item ID 则由调用方提供的 item_id 函数提取。",
+      "impact": "若按方案直接处理 rank_candidates 的结果，非空候选会因缺少 hit.id 失败；直接改用 hit.item.id 又无法支持原本允许的任意宿主对象。该问题影响新公开辅助函数的主要组合路径。",
+      "recommendation": "明确 hits 的类型和 ID 提取方式，例如接收 item_id 回调或定义带 ID 的输入结构；以 rank_candidates 返回的真实 CandidateHit 和一个非对象型宿主数据为输入做组合测试。"
+    },
+    {
+      "priority": "P1",
+      "location": "docs/plans/sdk-p0-plan.md:120-125",
+      "title": "通用嵌入配置接受前缀，但 API 嵌入路径没有应用或拒绝",
+      "evidence": "方案把 query_prefix 和 corpus_prefix 加入通用 EmbeddingConfig 和 identity，但只在 local.py 添加前缀包装，factory.py 的透传也定位于 local 分支。现有 src/agent_retrieval/embedders/factory.py:25-35 的 API 分支没有接收这些参数。",
+      "impact": "调用方为 API 嵌入器设置前缀时，配置和快照身份显示前缀已改变，实际请求文本却仍无前缀，可能导致检索查询不符合目标模型的输入约定。",
+      "recommendation": "明确前缀是所有 Embedder 共同支持的能力还是仅限 local；前者应覆盖 API 请求的查询和语料两条路径，后者应在 API 配置使用非默认值时明确拒绝，并测试该行为。"
+    },
+    {
+      "priority": "P2",
+      "location": "docs/plans/sdk-p0-plan.md:122-127",
+      "title": "缓存分键迁移未覆盖后端读写接口和语料二级缓存命中",
+      "evidence": "方案只明确给 query_key 增加 entry。现有 src/agent_retrieval/run/cache.py:54-71 的 get_vector 和 set_vector 内部自行调用 query_key，也需要接收并传递 entry。另在 213-226 行，embed_corpus 从后端命中时只跳过重嵌，没有把命中向量放入一级缓存，随后按一级缓存取值。",
+      "impact": "若只修改所列入口，后端读写无法使用正确的新键；即使完成分键，换 worker 后语料二级缓存命中仍会在返回时触发 KeyError。单次 q/c 分离测试不足以验证恢复路径。",
+      "recommendation": "明确修改 query_key、get_vector、set_vector 及所有调用点，并将后端命中值写回一级缓存。增加清空一级缓存后重新读取语料的测试，同时验证 q/c 键和向量。"
+    },
+    {
+      "priority": "P2",
+      "location": "docs/plans/sdk-p0-plan.md:32-39",
+      "title": "重复候选 ID 契约不能通过集合比较落实",
+      "evidence": "方案要求重复候选 ID 视为错误，但规定的 set(probabilities) 与候选 ID 集合比较会丢弃重复信息。例如候选 ID 为 [a, a]、概率键为 {a} 时，两集合相等。",
+      "impact": "重复 ID 可以通过校验，并使多个候选共享一个概率，无法满足方案明确声明的边界契约。",
+      "recommendation": "在构造请求和选择结果时分别检查候选 ID 的唯一性；补充重复 ID、缺失概率及 NaN/无穷概率的失败测试。"
+    },
+    {
+      "priority": "P2",
+      "location": "docs/plans/sdk-p0-plan.md:120-134",
+      "title": "公开契约变更与既有测试零改动的验收相互冲突",
+      "evidence": "方案将 identity() 从三元组改为四元组并分离 q/c 缓存，但要求既有测试零改动全绿。tests/test_api_embedder.py:31-32 明确断言三元组；tests/test_run_cache.py:179-187 明确断言相同文本跨查询和语料入口共享缓存，125 和 203 行也直接以旧签名调用 query_key。",
+      "impact": "这些测试的旧断言与新契约不能同时成立，实施者无法满足当前验收清单。",
+      "recommendation": "明确允许更新受契约变化影响的测试，保留不受影响的回归断言；分别验证新的公开 identity、默认快照 ID 兼容性和 q/c 分键行为。"
+    },
+    {
+      "priority": "P2",
+      "location": "docs/plans/sdk-p0-plan.md:105-112",
+      "title": "paired_report 验收示例遗漏必需的 metrics 参数",
+      "evidence": "方案要求平移时签名不变，但验收示例 paired_report(a.json, \"x\", b.json, \"y\") 只传四个参数；experiments/benchmarks/ablation_stats.py:80-86 的 metrics 是第五个必需参数。",
+      "impact": "照验收示例运行会抛 TypeError，无法完成所列包侧验收。",
+      "recommendation": "在示例中传入指标列表，并在新增测试中使用实际报告结构验证共享 case 和缺失 case 警告。"
+    }
+  ],
+  "suggestions": [
+    "上一轮关于 flags 内部分隔符碰撞、retrieval_instruction 传递、CLS 左填充、判停调用时机和 identity 返回形状说明的发现已有明确回应；落实时仍需按方案执行相应测试。",
+    "B3 的旧语义对照应同时冻结并比较实际 state、每个 Noul 问题的指令与 criteria、候选顺序及响应到 ID 的映射；将有意删除 tags 的差异与其他字段变化分别报告。",
+    "B4 对 corpus_hash 的说明宜表述为“生成后的语料文本发生变化时才产生新哈希”：配置变化不一定改变生成文本，identity 本身也没有接入该哈希。",
+    "本次为只读静态评审，核对了方案与仓内代码锚点；未执行 live 对拍或修改文件。"
+  ]
+}
