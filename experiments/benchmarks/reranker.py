@@ -29,6 +29,15 @@ class RerankError(RuntimeError):
     """Rerank 端点调用失败——基准 runner 按类型捕获并在预检时快速失败。"""
 
 
+def extract_usage(payload: dict) -> dict:
+    """透传端点自报的 token 用量；缺席字段记 0 而不是估算——成本数据要实测值。"""
+    usage = payload.get("usage") or {}
+    return {
+        "prompt_tokens": int(usage.get("prompt_tokens") or usage.get("input_tokens") or 0),
+        "total_tokens": int(usage.get("total_tokens") or 0),
+    }
+
+
 def parse_rerank_response(payload: dict, expected: int) -> list[float]:
     """Align a rerank response to input order.
 
@@ -63,8 +72,13 @@ class ApiReranker:
         self._timeout = timeout_seconds
 
     def rerank(self, query: str, documents: Sequence[str]) -> list[float]:
+        return self.rerank_detailed(query, documents)[0]
+
+    def rerank_detailed(self, query: str, documents: Sequence[str]) -> tuple[list[float], dict]:
+        """``(scores, usage)``：同 :meth:`rerank` 的调用语义，另透传端点自报的
+        token 用量——成本核算（token/费用）走与打分完全相同的重试与对齐路径。"""
         if not documents:
-            return []
+            return [], extract_usage({})
         try:
             import requests  # noqa: PLC0415 — 可选实验依赖，与 ApiEmbedder 同模式
         except ImportError as exc:
@@ -96,7 +110,8 @@ class ApiReranker:
                     raise RerankError(
                         f"HTTP {response.status_code}: {response.text[:200]}",
                     )
-                return parse_rerank_response(response.json(), len(documents))
+                payload = response.json()
+                return parse_rerank_response(payload, len(documents)), extract_usage(payload)
             except RerankError:
                 raise
             except Exception as exc:

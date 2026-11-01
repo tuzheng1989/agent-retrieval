@@ -99,12 +99,18 @@ boundaries — your domain lands between them).
 - Cap per-candidate descriptions (~2,000 chars) — long-tail documents blow the
   System One input budget (HTTP 400).
 
-### Reranker API (cross-encoder) — validated path, unvalidated model
+### Reranker API (cross-encoder) — validated path, measured and rejected
 - The client and two-stage arm are production-shaped (sparse-result alignment,
-  retry with backoff, constant-score detection); the only endpoint tested
-  (paratera GLM-Rerank) returned constant 1.0 scores and is reported invalid.
-  Before trusting any reranker, check its scores are not constant — the runner
-  now does this for you (`degraded_cases`).
+  retry with backoff, constant-score detection); `degraded_cases` in the report
+  is the constant-score precheck — run it before trusting any endpoint.
+- SiliconFlow `BAAI/bge-reranker-v2-m3` was measured under the pre-registered
+  gates (2026-10-31): a *valid* endpoint (420 calls, zero constant scores) that
+  is *significantly harmful* on all three tiers (ToolRet w/ and w/o instruction,
+  SkillRet) — NDCG@10 CI95 upper bound < 0 everywhere, all seven metrics ≤ 0.
+  Semantic-relatedness reranking re-judges the dimension stage 1 already ranks
+  by; it adds no task-executability dimension the way Jev's capability framing
+  does. **Do not reach for API cross-encoders on ToolRet/SkillRet-like domains;
+  Jev@20 remains the only validated stage-2 component.**
 
 ## Validation workflow (run this for your own domain)
 

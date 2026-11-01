@@ -23,7 +23,8 @@ from experiments.benchmarks.metrics import (
     recall_at_k,
     score_case,
 )
-from experiments.benchmarks.reranker import RerankError, parse_rerank_response
+from experiments.benchmarks.reranker import RerankError, extract_usage, parse_rerank_response
+from experiments.benchmarks.rerank_paired import constant_scores
 from experiments.benchmarks.run_benchmark import case_query_text, load_env_file, run_arm, run_rerank_arm
 from experiments.benchmarks.skillret import skill_case, skill_corpus_text, skill_resource
 from experiments.benchmarks.toolret import round_robin, tool_case, tool_corpus_text, tool_resource
@@ -270,6 +271,23 @@ def test_parse_rerank_response_aligns_sparse_results_by_index():
     except RerankError:
         raised = True
     assert raised  # 越界 index 显式失败
+
+
+def test_extract_usage_passes_through_endpoint_tokens():
+    assert extract_usage(
+        {"usage": {"prompt_tokens": 2100, "total_tokens": 2100}},
+    ) == {"prompt_tokens": 2100, "total_tokens": 2100}
+    # Jina 风格键名也认；usage 缺席记 0 而不是估算
+    assert extract_usage({"usage": {"input_tokens": 7}})["prompt_tokens"] == 7
+    assert extract_usage({}) == {"prompt_tokens": 0, "total_tokens": 0}
+
+
+def test_constant_scores_flags_no_discrimination():
+    assert constant_scores([1.0, 1.0, 1.0])                    # 实测 paratera 恒返 1.0
+    assert constant_scores([0.5])                              # 有效分数不足两个
+    assert constant_scores([float("-inf"), float("-inf")])     # 端点全部漏打分
+    assert not constant_scores([0.9, float("-inf"), 0.2])      # 漏打分 ≠ 常数分
+    assert not constant_scores([0.31, 0.32, 0.33])
 
 
 def test_run_rerank_arm_reorders_window_and_keeps_tail_order():

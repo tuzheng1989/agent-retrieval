@@ -329,3 +329,53 @@ experiment before ~1,600 generation calls and a 3-arm Jev comparison. Runner
 support (`--state-desc {truncate,summary,truncate-matched}` with a
 length-matched control arm) is in place and tested for the day a longer-document
 domain shows up. Report: `summarize --measure-only` (see the tool's output).
+
+## SiliconFlow bge-reranker-v2-m3 finally measured: valid endpoint, harmful direction — rejected (2026-10-31)
+
+The default rerank endpoint had never been exercised (the only tested one, paratera
+`GLM-Rerank`, was invalid). Pre-registered gates in issue #3: per-tier paired
+bootstrap CI, NDCG@10 primary, seven-metric zero-regression, constant-score
+precheck, stop gates. SiliconFlow `BAAI/bge-reranker-v2-m3` over fusion-docgen
+top-100 windows, same case sampler as the Jev reports (cross-report pairing by
+case id works — the SkillRet baseline metrics reproduce the Jev report's bit for
+bit).
+
+The endpoint is *valid* this time: 420 calls, zero constant-score responses, zero
+failures (`degraded_cases` = 0 on all three tiers; the probe discriminates 0.087
+vs 0.0). But the direction is *harmful everywhere*, significantly:
+
+| Tier | cases | NDCG@10 Δ (rerank−fusion) | CI95 | verdict |
+|---|---|---|---|---|
+| ToolRet w/ instruction | 20 (S2 stop gate) | −0.078 | [−0.146, −0.017] | harmful (upper < 0) |
+| ToolRet w/o instruction | 100 | −0.053 | [−0.107, −0.000] | harmful (upper < 0) |
+| SkillRet | 300 | −0.128 | [−0.162, −0.093] | harmful (all-negative CI) |
+
+All seven metrics ≤ 0 on every tier (adopt gate needed CI lower bound > 0 on at
+least one tier — zero tiers came close). Against Jev on the shared cases the
+cross-encoder also loses everywhere: ToolRet instruction −0.116 NDCG@10;
+SkillRet −0.142 (vs w20) / −0.152 (vs w50), all-negative CIs.
+
+Interpretation (extends Law 1): a stage-2 ranker pays only when it judges a
+dimension stage 1 cannot see. bge's training objective is query–document
+*semantic relatedness* — largely the dimension BM25+fusion already rank by —
+while both benchmarks' gold is *task executability*, exactly the dimension Jev's
+capability framing adds. On top of that the sigmoid scores cluster (0.087 vs 0.0
+on the probe), ties reorder by noise, and the 100-wide window churns a head the
+first stage already ordered well.
+
+Cost (measured): ~1.9 s per call, consistent across tiers; the endpoint reports
+no token usage (free tier). Char volume ≈ 79–110k chars per case (~5× the Jev
+state); at the Opper reference $0.11/M input ≈ 26k tokens/case ≈ $2.9 per 1k
+queries — cost was never the constraint, direction was.
+
+paratera `GLM-Rerank` re-tested during setup: 4/20 constant-score degraded cases
+and every metric below baseline — the earlier invalid verdict stands.
+
+**Verdict: the API reranker lever is not adopted on either benchmark's evidence
+domain; Jev@20 remains the only validated stage-2 component.** Runner:
+`experiments.benchmarks.rerank_paired` (per-case paired rows, constant-score and
+abort semantics inherited from `run_rerank_arm`; `rerank_detailed` also passes
+through endpoint usage). Reports: `rerank-pilot-sf-toolret-inst-20.json`,
+`rerank-sf-toolret-query-100.json`, `rerank-sf-skillret-300.json` (regenerable,
+gitignored). Reproduce: `python -m experiments.benchmarks.rerank_paired --bench
+toolret --query-mode instruction --limit 20 --output ...` etc.
