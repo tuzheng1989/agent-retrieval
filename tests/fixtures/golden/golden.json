@@ -1,0 +1,133 @@
+{
+  "pending": {
+    "zh_plot": "待 zh-plot-v1 构建立项后接线（03 票冻结方案）"
+  },
+  "skillret": {
+    "fixture": "skillret-golden-v1",
+    "revision": "a050ad2",
+    "embedder_identity": [
+      "zhipu",
+      "GLM-Embedding-3",
+      "GLM-Embedding-3"
+    ],
+    "arms": {
+      "bm25+plain": {
+        "mrr": 0.6482,
+        "recall@5": 0.6433,
+        "completeness@5": 0.54,
+        "ndcg@5": 0.592,
+        "recall@10": 0.68,
+        "completeness@10": 0.56,
+        "ndcg@10": 0.6061
+      },
+      "bm25+docgen": {
+        "mrr": 0.8746,
+        "recall@5": 0.83,
+        "completeness@5": 0.72,
+        "ndcg@5": 0.8183,
+        "recall@10": 0.8633,
+        "completeness@10": 0.8,
+        "ndcg@10": 0.8322
+      },
+      "fusion+plain": {
+        "mrr": 0.8379,
+        "recall@5": 0.76,
+        "completeness@5": 0.64,
+        "ndcg@5": 0.7517,
+        "recall@10": 0.82,
+        "completeness@10": 0.72,
+        "ndcg@10": 0.775
+      },
+      "fusion+docgen": {
+        "mrr": 0.9037,
+        "recall@5": 0.8533,
+        "completeness@5": 0.76,
+        "ndcg@5": 0.8337,
+        "recall@10": 0.8833,
+        "completeness@10": 0.8,
+        "ndcg@10": 0.8441
+      }
+    },
+    "adversarial": [
+      {
+        "query": "Hello, good morning",
+        "bound": false,
+        "top_relevance": 0.3762
+      },
+      {
+        "query": "purple elephant dancing tango",
+        "bound": false,
+        "top_relevance": null
+      },
+      {
+        "query": "The quiet river flows under the old stone bridge at dawn",
+        "bound": false,
+        "top_relevance": 0.1764
+      }
+    ]
+  },
+  "toolret": {
+    "fixture": "toolret-golden-v1",
+    "revision": "parquet-main",
+    "embedder_identity": [
+      "zhipu",
+      "GLM-Embedding-3",
+      "GLM-Embedding-3"
+    ],
+    "arms": {
+      "bm25+plain": {
+        "mrr": 0.6164,
+        "recall@5": 0.6167,
+        "completeness@5": 0.48,
+        "ndcg@5": 0.554,
+        "recall@10": 0.6417,
+        "completeness@10": 0.52,
+        "ndcg@10": 0.5661
+      },
+      "bm25+docgen": {
+        "mrr": 0.7167,
+        "recall@5": 0.685,
+        "completeness@5": 0.52,
+        "ndcg@5": 0.6313,
+        "recall@10": 0.7533,
+        "completeness@10": 0.6,
+        "ndcg@10": 0.6594
+      },
+      "fusion+plain": {
+        "mrr": 0.6844,
+        "recall@5": 0.665,
+        "completeness@5": 0.52,
+        "ndcg@5": 0.61,
+        "recall@10": 0.7267,
+        "completeness@10": 0.56,
+        "ndcg@10": 0.6392
+      },
+      "fusion+docgen": {
+        "mrr": 0.7341,
+        "recall@5": 0.6733,
+        "completeness@5": 0.5,
+        "ndcg@5": 0.6331,
+        "recall@10": 0.785,
+        "completeness@10": 0.62,
+        "ndcg@10": 0.6833
+      }
+    },
+    "adversarial": [
+      {
+        "query": "Hello, good morning",
+        "bound": false,
+        "top_relevance": 0.7735
+      },
+      {
+        "query": "purple elephant dancing tango",
+        "bound": false,
+        "top_relevance": 0.3603
+      },
+      {
+        "query": "The quiet river flows under the old stone bridge at dawn",
+        "bound": false,
+        "top_relevance": 0.1929
+      }
+    ]
+  }
+}
