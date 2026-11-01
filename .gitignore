@@ -16,9 +16,15 @@ experiments/benchmarks/.cache/
 # Benchmark reports (regenerable via the runners; datasets/caches already ignored)
 experiments/*-benchmark*.json
 experiments/*-smoke.json
-# Jev rerank reports (regenerable via experiments.benchmarks.jev_rerank)
-experiments/jev-rerank-*.json
+# Jev 实验报告（regenerable via experiments.benchmarks.jev_rerank；jev_cases.json 已跟踪不受影响）
+experiments/jev-*.json
 experiments/jev-rerank-run.log
+# 实验运行日志（iterative-run.log、recall-ablation-run.log 等）
+experiments/*-run.log
+# 本地工具状态：codegraph 索引与守护进程、Claude 本地配置与临时工作树、skills 安装目录（skills-lock.json 为锁文件，入库）
+.codegraph/
+.claude/
+.agents/
 # Paired rerank-arm reports (regenerable via experiments.benchmarks.rerank_paired)
 experiments/rerank-*.json
 # Recall ablation reports (regenerable via --retriever fields)
