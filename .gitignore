@@ -33,3 +33,6 @@ experiments/recall-ablation-*.json
 experiments/iterative-*.json
 # Two-tier retrieval ablation reports (regenerable via experiments.benchmarks.two_tier)
 experiments/two-tier-*.json
+
+# 嵌入配对实验报告（可经 embedding_paired 复现）
+experiments/emb-paired-*.json

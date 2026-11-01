@@ -379,3 +379,70 @@ through endpoint usage). Reports: `rerank-pilot-sf-toolret-inst-20.json`,
 `rerank-sf-toolret-query-100.json`, `rerank-sf-skillret-300.json` (regenerable,
 gitignored). Reproduce: `python -m experiments.benchmarks.rerank_paired --bench
 toolret --query-mode instruction --limit 20 --output ...` etc.
+
+## Domain-tuned embedding arm: Edge adopted on the SkillRet face, ToolRet face is hardware-blocked (2026-11-01)
+
+Ticket #8's paired-embedding study, run under the pre-registered gates (issue #9
+comment: per-arm calibration stop gate, paired bootstrap 10k / seed 20261022,
+NDCG@10 primary + six-metric zero-regression). Outcome: **one arm survives and
+is adopted; everything else is falsified by measurement, not by intuition.**
+
+**S1 calibration stop gate killed three candidates before any ranking run:**
+
+| Candidate | Contract | Measured ms/doc | 44k (or 6k) extrapolation | Verdict |
+|---|---|---|---|---|
+| SKILLRET-Embedding-0.6B | Qwen3 decoder, bf16, 8k ctx | 79,702 | ≈ 40 days | dead |
+| harrier-oss-v1-0.6b | same decoder family | not measured | — | dead by family inference |
+| ToolRet-trained-bge-large (fp32 forced) | BERT 335M, CLS, 512 | 7,608 | ≈ 94 h | dead (gate: 6 h) |
+
+Decoder-family embedding models are categorically corpus-infeasible on pure
+CPU; even the sanctioned encoder replacement is 15x over the feasibility line
+(a solo-machine re-test is estimated at 15–30 h, still far over). **ToolRet's
+embedding-face upgrade is hardware-blocked, not evidence-blocked** — that is a
+roadmap input (API-hosted domain-tuned embedders or GPU), recorded as such.
+
+**Gate-implementation correction, disclosed before any new embedding run** (issue
+#9 comment): the pre-registered gate text is "44k extrapolated >6 h"; the code
+had hard-coded 500 ms/doc, which agrees for 44k faces but wrongly kills
+face-restricted models. Amended to the extrapolation semantics (single-face
+≤360 min). Under it, the replacement arm passed: SKILLRET-Edge-109M (82 MB,
+CLS/256/bare-query, teacher-parity on the public split) calibrated at
+837 ms/doc → 6,006-doc face ≈ 84 min, embedded, done.
+
+**SkillRet face result (300 paired cases, docgen corpus, fusion arm with the
+embedder as the only changed factor vs GLM-Embedding-3):**
+
+| Metric | Δ (Edge − GLM) | CI95 | improved/tied/worsened |
+|---|---|---|---|
+| MRR | +0.0406 | [+0.0156, +0.0654] | 56/222/22 |
+| recall@5 | +0.0967 | [+0.0683, +0.1261] | 60/233/7 |
+| completeness@5 | +0.1300 | [+0.0900, +0.1733] | 43/253/4 |
+| ndcg@5 | +0.0777 | [+0.0541, +0.1016] | 87/186/27 |
+| recall@10 | +0.0822 | [+0.0533, +0.1122] | 53/240/7 |
+| completeness@10 | +0.1067 | [+0.0667, +0.1500] | 37/258/5 |
+| **ndcg@10 (primary)** | **+0.0730** | **[+0.0523, +0.0940]** | 104/168/28 |
+
+All seven paired-difference CIs clear zero — the adoption gate (primary CI
+lower bound > 0 + every secondary mean ≥ 0) passes with margin. Absolute
+levels: Edge fusion NDCG@10 0.7833 / recall@5 0.7928 vs GLM 0.7104 / 0.6961.
+The first-stage coverage bottleneck moves too: **gold-in-window@20 = 0.9667,
+@50 = 0.99** (GLM's window-20 coverage was 0.793) — the 82 MB local model
+nearly saturates the Jev window at a fraction of the API model's size.
+
+This is the repo's first measured instance of **domain fine-tuning beating a
+larger general API embedder inside the RRF fusion architecture** ("fine-tuning
+beats scale" reproduces here with compounding, not cancellation).
+
+Run architecture note: embedding (model-resident, memory-heavy) runs detached
+in user PowerShell or background shells; retrieval consumes only the sqlite
+vector cache via a miss-fails-fast lookup embedder, so ranking sessions never
+load a model. fp32 loading is forced for encoder checkpoints — CPU has no
+native fp16/bf16 and the emulated path was measured drastically slower.
+Cache identity is `{model repo}:{dim}`; dtype is not in the identity — when a
+dtype changes, the old rows are purged instead (edge's vectors are bf16-loaded,
+documented; internally consistent per arm).
+
+Cost (measured): Edge face embedding 84 min CPU once, then free forever;
+GLM baseline = per-query API calls; bge = 94 h CPU — not a cost but a
+feasibility wall. All numbers reproducible via
+`experiments.benchmarks.embedding_paired` (`--embed-only` then default mode).
