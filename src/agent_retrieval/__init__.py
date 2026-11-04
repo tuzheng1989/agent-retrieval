@@ -35,6 +35,7 @@ from agent_retrieval.core.ports import (
     select_with_judge,
     VectorStore,
 )
+from agent_retrieval.core.projection import CorpusProjection
 from agent_retrieval.core.resource_index import (
     ResourceBM25Index,
     ResourceHit,
@@ -54,6 +55,9 @@ _LAZY_EXPORTS: dict[str, tuple[str, str]] = {
     "JevJudge": ("agent_retrieval.judges.api", "JevJudge"),
     "JevJudgeConfig": ("agent_retrieval.judges.api", "JevJudgeConfig"),
     "JudgeResponseError": ("agent_retrieval.judges.api", "JudgeResponseError"),
+    # ChatJudge：chat completions 端点判定（requests 依赖，extras: judge）
+    "ChatJudge": ("agent_retrieval.judges.chat", "ChatJudge"),
+    "ChatJudgeConfig": ("agent_retrieval.judges.chat", "ChatJudgeConfig"),
     # Redis 向量快照存储（redis 依赖，extras: redis）
     "RedisVectorStore": ("agent_retrieval.stores.redis_store", "RedisVectorStore"),
     "corpus_hash": ("agent_retrieval.stores.redis_store", "corpus_hash"),
@@ -73,6 +77,7 @@ __all__ = [
     "BM25Index",
     "BM25Score",
     "CandidateHit",
+    "CorpusProjection",
     "DEFAULT_BM25_B",
     "DEFAULT_BM25_K1",
     "TOKENIZER_VERSION",
@@ -86,6 +91,8 @@ __all__ = [
     "JevJudge",
     "JevJudgeConfig",
     "JudgeResponseError",
+    "ChatJudge",
+    "ChatJudgeConfig",
     "ApiEmbedder",
     "LocalEmbedder",
     "MockEmbedder",

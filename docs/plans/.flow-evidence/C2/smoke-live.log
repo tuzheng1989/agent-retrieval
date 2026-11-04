@@ -1,0 +1,8 @@
+[smoke] model=glm-5.3-flash candidates=['geo-query', 'email-send', 'chart-render', 'weather-forecast']
+[smoke] PASS
+[smoke] task: Research the population of California in 2024, then email a summary to Mei
+[smoke] model: glm-5.3-flash  latency: 4.32s
+[smoke]   geo-query          p=1.000
+[smoke]   email-send         p=1.000
+[smoke]   chart-render       p=0.050
+[smoke]   weather-forecast   p=0.000

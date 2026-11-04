@@ -68,6 +68,22 @@ class JevJudgeConfig:
     timeout_seconds: float = 60.0
 
 
+def projected_candidates(candidates: Sequence[JudgedCandidate]) -> dict[str, dict[str, str]]:
+    """候选投影的共享纯函数（``judge_state`` 与 ``judges.chat`` 的单一出处）。
+
+    R3 投影定案：每候选只投影 ``{name, description}`` 两键——描述按 jev_rerank 旧版
+    切片语义截断 :data:`JEV_DESCRIPTION_MAX_CHARS` 字符；tags/use_when/avoid_when 不
+    进判定输入。投影口径漂移即两类 judge 语义分叉，故收敛到本函数单一出处。
+    """
+    return {
+        f"c{index}": {
+            "name": candidate.name,
+            "description": candidate.description[:JEV_DESCRIPTION_MAX_CHARS],
+        }
+        for index, candidate in enumerate(candidates)
+    }
+
+
 def judge_state(task: str, retrieval_instruction: str, candidates: Sequence[JudgedCandidate]) -> dict:
     """构造 System One 判定请求体的纯函数（B3 对拍两臂的唯一构造点）。
 
@@ -82,15 +98,7 @@ def judge_state(task: str, retrieval_instruction: str, candidates: Sequence[Judg
     state = {
         "task": task,
         "retrieval_instruction": retrieval_instruction,
-        "candidates": {
-            f"c{index}": {
-                # R3 投影定案：只投影 {name, description}——描述按 jev_rerank 旧版
-                # 切片语义截断 2000 字符；tags/use_when/avoid_when 不进 state。
-                "name": candidate.name,
-                "description": candidate.description[:JEV_DESCRIPTION_MAX_CHARS],
-            }
-            for index, candidate in enumerate(candidates)
-        },
+        "candidates": projected_candidates(candidates),
     }
     questions = {
         f"c{index}": {

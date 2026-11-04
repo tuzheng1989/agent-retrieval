@@ -1,0 +1,31 @@
+=== C2 完整测试日志（2026-11-04）===
+
+--- 命令 1: 第0步基线（重构前）.venv/Scripts/python.exe -m pytest tests/test_api_judge.py -q ---
+................                                                         [100%]
+16 passed in 0.16s
+
+--- 命令 2: 提取重构后零改动复跑 tests/test_api_judge.py -q ---
+................                                                         [100%]
+16 passed in 0.17s
+
+--- 命令 3: 判定一离线复跑 .venv/Scripts/python.exe -m experiments.benchmarks.judge_parity --skip-live ---
+[parity] 4 cases × 9 candidates
+[parity] legacy snapshot -> C:\Users\tuzhe\runspace\agent-retrieval\experiments\judge-parity-legacy.json
+[parity] report -> C:\Users\tuzhe\runspace\agent-retrieval\experiments\judge-parity-report.json
+(exit 0 = 判定一 PASS；judge-parity-legacy.json / judge-parity-report.json git 零 diff)
+
+--- 命令 4: TDD 中间态定向 tests/test_api_chat_judge.py tests/test_api_judge.py tests/test_judge_port.py -q ---
+.......................................................                  [100%]
+55 passed in 0.26s
+
+--- 命令 5: 收尾定向（最终面）同命令 4 ---
+
+--- 命令 6: ruff check 全部 6 个改动 py 文件 ---
+All checks passed!
+
+--- 命令 7: 冒烟脚本静态验证 py_compile + import 冒烟 + 缺配置退出码路径 ---
+py_compile OK; import-smoke OK: [('geo-query', 'Geo Query'), ('email-send', 'Email Sender'), ('chart-render', 'Chart Renderer'), ('weather-forecast', 'Weather Forecast')]
+缺配置路径 exit=4（报错指路输出见报告）
+--- 命令 5: 收尾定向（最终面）.venv/Scripts/python.exe -m pytest tests/test_api_chat_judge.py tests/test_api_judge.py tests/test_judge_port.py -q ---
+.......................................................                  [100%]
+55 passed in 0.26s

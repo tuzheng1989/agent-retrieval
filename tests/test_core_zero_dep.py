@@ -12,6 +12,7 @@ CORE_MODULES = [
     "agent_retrieval.core.bm25",
     "agent_retrieval.core.fusion",
     "agent_retrieval.core.ports",
+    "agent_retrieval.core.projection",
     "agent_retrieval.core.resource_index",
     "agent_retrieval.core.ranking",
 ]

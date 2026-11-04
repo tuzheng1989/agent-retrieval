@@ -4,6 +4,7 @@
 > 范围：CorpusProjection 声明式投影（零依赖层）、ChatJudge 裸 HTTP chat 端点判定实现（复用 `[judge]` extras）、`judge_state` 投影逻辑提取共享、live 冒烟脚本。
 > 宿主纪律不变：包不读环境变量、不读配置文件——一切经构造参数；experiments 是宿主。
 > 评审状态：定稿（2026-11-04）。自审一轮（auditor 六项机械核查）：4 条 P2 + 5 条 sug，已全部修复（行号锚点、测试计数 16、`--skip-live` 口径、D3 冒烟定位与验收对齐）；无 P1 硬伤。经裁决跳过对抗评审直接定稿。
+> 实施状态：**已完成**（2026-11-04；live 冒烟 2026-11-05 补验 PASS）。C1/C2 两批逐批 T2 流程（Executor → 主控抽查 → Auditor 证据包）全 PASS；末波收口全量 **252 passed**（基线 215）；`judge_state` 重构语义保留四重证据（16 项零改动 + 判定一复跑 + 冻结快照零 diff + diff 纯重构）；C2 验收第 7 条 live 冒烟断言已补（智谱 coding 网关 `api/coding/paas/v4` + glm-5.3-flash，exit 0，正例 1.000 / 负例 0.050 / 干扰 0.000，日志 `docs/plans/.flow-evidence/C2/smoke-live.log`）。证据：`docs/plans/.flow-evidence/{C1,C2}/`。
 
 ## 设计裁决（本方案的前提假设，逐条可挑战）
 
