@@ -1,0 +1,225 @@
+{
+  "catalog_version": "catalog-v1",
+  "resources": [
+    {
+      "id": "geo-query",
+      "name": "Geo Query",
+      "description": "Query population and demographic data by geographic region and year；按地理区域与年份查询人口与人口统计数据。",
+      "use_when": "A user needs population statistics for a place and time.",
+      "avoid_when": "Do not use for weather forecasts or map images.",
+      "kind": "tool",
+      "params_schema": {
+        "region": {
+          "type": "string"
+        },
+        "year": {
+          "type": "integer"
+        }
+      },
+      "invoke_effect": [],
+      "failure_modes": []
+    },
+    {
+      "id": "doc-search",
+      "name": "Document Search",
+      "description": "Find passages and citations in uploaded documents；在已上传文档中检索段落与引文。",
+      "use_when": "A user asks a question about uploaded files or needs source passages.",
+      "avoid_when": "Do not use for writing new files or sending email.",
+      "kind": "tool",
+      "params_schema": {
+        "query": {
+          "type": "string"
+        }
+      },
+      "invoke_effect": [],
+      "failure_modes": []
+    },
+    {
+      "id": "email-send",
+      "name": "Email Sender",
+      "description": "Send an email message to named recipients；向指定收件人发送电子邮件通知。",
+      "use_when": "A user asks to email someone a message.",
+      "avoid_when": "Do not use to search an inbox or summarize documents.",
+      "kind": "tool",
+      "params_schema": {
+        "to": {
+          "type": "string"
+        },
+        "subject": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        }
+      },
+      "invoke_effect": [
+        {
+          "kind": "email_sent",
+          "state_key": "sent_messages",
+          "fields": {
+            "to": "<args.to>",
+            "subject": "<args.subject>",
+            "body": "<args.body>",
+            "sent_at": "generated:clock"
+          }
+        }
+      ],
+      "failure_modes": [
+        {
+          "condition": "to 参数的收件人域名属于未知投递域（以 .invalid 结尾，如 example.invalid）",
+          "match": {
+            "arg": "to",
+            "op": "endswith",
+            "value": ".invalid"
+          },
+          "message": "发送失败：收件人域名无法投递（unknown recipient domain），消息未发出。"
+        }
+      ]
+    },
+    {
+      "id": "calendar-create",
+      "name": "Calendar Event Creator",
+      "description": "Create a meeting event with a date, time, and attendees；创建带日期、时段与参会人的会议日程事件。",
+      "use_when": "A user wants to schedule a meeting.",
+      "avoid_when": "Do not use to send an email without creating an event.",
+      "kind": "tool",
+      "params_schema": {
+        "project": {
+          "type": "string"
+        },
+        "attendees": {
+          "type": "array"
+        },
+        "local_date": {
+          "type": "string"
+        },
+        "period": {
+          "type": "string"
+        }
+      },
+      "invoke_effect": [
+        {
+          "kind": "event_exists",
+          "state_key": "calendar_events",
+          "fields": {
+            "id": "generated:event-id",
+            "project": "<args.project>",
+            "attendees": "<args.attendees>",
+            "local_date": "<args.local_date>",
+            "period": "<args.period>"
+          }
+        }
+      ],
+      "failure_modes": []
+    },
+    {
+      "id": "chart-render",
+      "name": "Chart Renderer",
+      "description": "Render bar and line charts from supplied numeric data；根据给定数值数据渲染柱状图或折线图。",
+      "use_when": "A user wants a visualization of data already available.",
+      "avoid_when": "Do not use to fetch missing data or write a narrative report.",
+      "kind": "tool",
+      "params_schema": {
+        "data_source": {
+          "type": "string"
+        },
+        "chart_type": {
+          "type": "string"
+        }
+      },
+      "invoke_effect": [],
+      "failure_modes": []
+    },
+    {
+      "id": "report-write",
+      "name": "Report Writer",
+      "description": "Write a narrative report from supplied facts and evidence；基于给定事实素材撰写叙事报告并登记到文档索引。",
+      "use_when": "A user asks for a written summary or report.",
+      "avoid_when": "Do not use for chart rendering or data retrieval.",
+      "kind": "tool",
+      "params_schema": {
+        "topic": {
+          "type": "string"
+        },
+        "facts_source": {
+          "type": "string"
+        }
+      },
+      "invoke_effect": [
+        {
+          "kind": "report_exists",
+          "state_key": "reports",
+          "fields": {
+            "topic": "<args.topic>",
+            "facts_source": "<args.facts_source>",
+            "created_at": "generated:clock"
+          }
+        },
+        {
+          "kind": "document_updated",
+          "state_key": "documents",
+          "fields": {
+            "doc_id": "generated:report-doc-id",
+            "title": "<args.topic>",
+            "updated_at": "generated:clock"
+          }
+        }
+      ],
+      "failure_modes": []
+    },
+    {
+      "id": "weather-forecast",
+      "name": "Weather Forecast",
+      "description": "Get weather forecasts for a place and date；查询指定地点与日期的天气预报。",
+      "use_when": "A user asks for future weather conditions.",
+      "avoid_when": "Do not use for historic population data.",
+      "kind": "tool",
+      "params_schema": {
+        "place": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string"
+        }
+      },
+      "invoke_effect": [],
+      "failure_modes": []
+    },
+    {
+      "id": "inbox-search",
+      "name": "Inbox Search",
+      "description": "Search received email messages by sender, subject, and date；按发件人、主题与日期检索收件箱邮件。",
+      "use_when": "A user wants to find or inspect an existing email.",
+      "avoid_when": "Do not use to send a new message.",
+      "kind": "tool",
+      "params_schema": {
+        "sender": {
+          "type": "string"
+        },
+        "subject_contains": {
+          "type": "string"
+        }
+      },
+      "invoke_effect": [],
+      "failure_modes": []
+    },
+    {
+      "id": "meeting-notes-skill",
+      "name": "Meeting Notes Skill",
+      "description": "会议安排方法：用 calendar-create 创建会议日程，再用 email-send 通知参会相关人。Schedule meetings and notify attendees via calendar and email；会议安排与纪要方法的技能说明。",
+      "use_when": "用户要求安排会议并希望按团队规范流程完成时。",
+      "avoid_when": "不要用于数据报告撰写或一次性问答。",
+      "kind": "skill",
+      "body": "会议安排方法（Meeting Notes Skill）\n\n目标：按团队规范完成一次会议的安排与通知。\n\n步骤：\n1. 明确会议四要素：项目名（project）、参会人（attendees，列表）、日期（local_date，格式 YYYY-MM-DD）、时段（period，取值 morning/afternoon/evening）。任何要素缺失时，先向用户逐项确认，不要猜测。\n2. 要素齐全后，使用 calendar-create 创建日程：project 填项目名，attendees 为参会人列表，local_date 与 period 按确认结果填写。\n3. 创建成功后，使用 email-send 向需要知会的联系人发送会议通知：主题写「<项目> 会议通知」，正文包含日期、时段与参会人。\n4. 向用户汇报：已创建的会议要素与已通知的联系人。\n\n注意：不要在要素不全时创建会议；不要重复创建同一会议。"
+    },
+    {
+      "id": "data-summary-skill",
+      "name": "Data Summary Skill",
+      "description": "数据摘要方法：整理用户提供的数据并用 report-write 产出结构化报告。Summarize supplied data into a narrative report via report-write；数据摘要与报告撰写方法的技能说明。",
+      "use_when": "用户提供了数据并要求写成报告或摘要时。",
+      "avoid_when": "不要用于会议安排或需要先取数的查询。",
+      "kind": "skill",
+      "body": "数据摘要方法（Data Summary Skill）\n\n目标：把用户提供的数据整理成一份结构化报告。\n\n步骤：\n1. 确认报告主题（topic）与事实来源（facts_source）。主题或数据缺失时，先向用户确认，不要自行编造。\n2. 整理数据要点：总量、同比/环比变化、异常项。只使用用户提供的或工具查询到的数据，不虚构数字。\n3. 使用 report-write 产出报告：topic 填报告主题，facts_source 注明数据出处（如 user-provided 或具体工具名）。\n4. 向用户汇报：报告已生成及涵盖的要点。\n\n注意：报告中的每个数字都必须可追溯到 facts_source；不做超出数据支撑的结论。"
+    }
+  ]
+}

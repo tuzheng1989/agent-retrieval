@@ -1,0 +1,16 @@
+{
+  "trace": {
+    "case_id": "e2e-smoke-007",
+    "steps": [],
+    "final_output": "抱歉，无法完成这个请求。原因如下：\n\n1. **未找到目标资源**：我检索了「doc-handbook-001 员工手册」，返回结果中没有这份手册本身——目前可检索到的只有 `doc-search`（Document Search）这个文档检索工具，它的功能是\"在已上传文档中检索段落与引文\"，并不包含 doc-handbook-001 这份资源，也无法输出全文译文。\n2. **没有可用的翻译能力**：我同时检索了翻译类工具/技能，检索结果为空，即当前环境中没有可用于将文本翻译成英文的工具或技能。\n\n按照使用规范，我只能调用检索结果中明确返回的资源，不能凭猜测直接操作未经展示的资源 id。\n\n**建议**：\n- 请确认这份手册的资源 id 或名称是否正确，或者手册是否已上传到当前环境；\n- 如手册确实已上传，也可以考虑让我先用 `doc-search` 定位手册中的具体段落并附上引文，但仍需说明：环境中没有翻译工具，我无法将全文翻译成英文。\n\n需要我尝试其他检索关键词，或先做段落定位吗？",
+    "exhausted": false,
+    "error": null
+  },
+  "result": {
+    "success": true,
+    "failure_reasons": [],
+    "attributions": [],
+    "earliest_blocker": null,
+    "budget_exhausted": false
+  }
+}

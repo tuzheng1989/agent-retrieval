@@ -1,0 +1,44 @@
+{
+  "world_version": "world-v1",
+  "collections": {
+    "calendar_events": [
+      {
+        "id": "evt-seed-001",
+        "project": "Atlas",
+        "attendees": ["Mei"],
+        "local_date": "2026-10-15",
+        "period": "morning"
+      },
+      {
+        "id": "evt-seed-002",
+        "project": "Beacon",
+        "attendees": ["Chen", "Wang"],
+        "local_date": "2026-10-20",
+        "period": "afternoon"
+      }
+    ],
+    "emails": [
+      {
+        "id": "eml-seed-001",
+        "from": "liu@corp.example.com",
+        "subject": "本周迭代周报汇总",
+        "snippet": "本周迭代已完成检索排序回归，详见附件周报。"
+      },
+      {
+        "id": "eml-seed-002",
+        "from": "chen@corp.example.com",
+        "subject": "会议室预订确认",
+        "snippet": "10 月 20 日下午 Beacon 项目评审会议室已预订。"
+      }
+    ],
+    "documents": [
+      {
+        "doc_id": "doc-handbook-001",
+        "title": "员工手册",
+        "updated_at": "2026-09-01"
+      }
+    ],
+    "reports": [],
+    "sent_messages": []
+  }
+}

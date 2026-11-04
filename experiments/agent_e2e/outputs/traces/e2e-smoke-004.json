@@ -1,0 +1,16 @@
+{
+  "trace": {
+    "case_id": "e2e-smoke-004",
+    "steps": [],
+    "final_output": "已为您通过 Weather Forecast 工具查询了北京 2026-11-11 的天气，调用执行成功（只读查询，无状态变更）。\n\n不过需要说明：本次工具返回仅确认了调用执行成功，**未返回具体的天气数据内容**（如温度、天气状况、降水等），因此我无法向您提供具体的天气详情。\n\n如果需要，我可以尝试重新查询，或者您也可以直接使用其他天气服务确认。",
+    "exhausted": false,
+    "error": null
+  },
+  "result": {
+    "success": true,
+    "failure_reasons": [],
+    "attributions": [],
+    "earliest_blocker": null,
+    "budget_exhausted": false
+  }
+}

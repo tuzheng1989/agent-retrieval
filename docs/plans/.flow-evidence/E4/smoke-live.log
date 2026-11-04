@@ -1,0 +1,14 @@
+e2e-smoke-001: success=True
+e2e-smoke-002: success=True
+e2e-smoke-003: success=True
+e2e-smoke-004: success=True
+e2e-smoke-005: success=True
+e2e-smoke-006: success=True
+e2e-smoke-007: success=True
+e2e-smoke-008: success=True
+e2e-smoke-009: success=True
+e2e-smoke-010: success=True
+e2e-smoke-011: success=True
+e2e-smoke-012: success=True
+汇总: 12/12 成功 → C:\Users\tuzhe\runspace\agent-retrieval\experiments\agent_e2e\outputs\smoke-report.json
+SMOKE_EXIT=0

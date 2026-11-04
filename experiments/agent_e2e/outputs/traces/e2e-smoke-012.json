@@ -1,0 +1,16 @@
+{
+  "trace": {
+    "case_id": "e2e-smoke-012",
+    "steps": [],
+    "final_output": "✅ 报告已生成，全部按技能方法完成。过程与要点如下：\n\n**执行过程**\n1. 检索并读取了技能 `data-summary-skill`，按其方法执行；\n2. 报告主题与事实来源已确认齐全，无需额外澄清；\n3. 通过 `report-write` 工具产出报告，调用成功（状态：report_exists、document_updated）。\n\n**报告涵盖要点**（仅基于您提供的数据，全部可追溯到 user-provided 来源）\n- 主题：2026 Q3 数据摘要\n- 数据要点：\n  - 销售额总量：120 万元\n  - 环比变化：增长 8%\n\n说明：本季度数据中未包含同比变化或异常项信息，报告未虚构超出数据支撑的内容。如您能补充更多维度（如同比数据、其他指标），我可以按同样方法更新这份摘要。",
+    "exhausted": false,
+    "error": null
+  },
+  "result": {
+    "success": true,
+    "failure_reasons": [],
+    "attributions": [],
+    "earliest_blocker": null,
+    "budget_exhausted": false
+  }
+}

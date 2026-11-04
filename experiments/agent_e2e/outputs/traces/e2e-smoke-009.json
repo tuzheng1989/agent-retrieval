@@ -1,0 +1,16 @@
+{
+  "trace": {
+    "case_id": "e2e-smoke-009",
+    "steps": [],
+    "final_output": "已确认邮件发送工具可用（参数为收件人、主题、正文）。不过要发出这封汇报邮件，还缺少几项必要信息，请您补充：\n\n1. **王总的邮箱地址**：检索到的工具需要明确收件人地址，请提供王总的具体邮箱（如 wangzong@xxx.com）。\n2. **项目名称**：汇报的是哪个项目？主题里需要体现。\n3. **进展的具体内容**：您希望汇报哪些要点？例如：\n   - 目前完成到哪个阶段 / 里程碑\n   - 关键成果或数据\n   - 存在的问题或风险（如有）\n   - 下一步计划及需要王总决策或支持的事项\n4. **（可选）主题措辞偏好**：如无特别要求，我会拟为「XX项目进展汇报」。\n\n请提供以上信息，我确认后即可发送。",
+    "exhausted": false,
+    "error": null
+  },
+  "result": {
+    "success": true,
+    "failure_reasons": [],
+    "attributions": [],
+    "earliest_blocker": null,
+    "budget_exhausted": false
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "trace": {
+    "case_id": "e2e-smoke-006",
+    "steps": [],
+    "final_output": "很抱歉，我无法为您完成机票预订。我已经进行了两次检索，当前可用的资源库中**没有任何机票预订或航班查询类工具**。\n\n目前环境中仅有的可用资源是：\n- **Weather Forecast**：查询指定地点与日期的天气预报\n- **Geo Query**：按地理区域查询人口统计数据\n\n这两个资源都无法用于订购机票，我也不能借助其他途径拼凑结果。\n\n如果您需要，我可以为您做这些相关的事情：\n1. **查询下周上海的天气**——方便您了解出行期间的天气情况（需要您提供具体日期）；\n2. 如果您后续在本环境中接入了航班预订工具，我可以再帮您完成订票。\n\n请问需要我帮您查询上海下周的天气预报吗？",
+    "exhausted": false,
+    "error": null
+  },
+  "result": {
+    "success": true,
+    "failure_reasons": [],
+    "attributions": [],
+    "earliest_blocker": null,
+    "budget_exhausted": false
+  }
+}

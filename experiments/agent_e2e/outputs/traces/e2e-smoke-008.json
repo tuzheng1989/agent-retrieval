@@ -1,0 +1,16 @@
+{
+  "trace": {
+    "case_id": "e2e-smoke-008",
+    "steps": [],
+    "final_output": "可以使用工具「Calendar Event Creator」来创建会议，但根据它的参数规格，你的请求还缺少以下必要信息，需要你补充后我才能执行：\n\n1. **project（会议主题/项目名称）**：这次会议是关于什么的？\n2. **attendees（参会人）**：参会人是只有 Alex，还是还需要包括你本人或其他人？请给出参会人名单。\n3. **local_date（日期）**：会议安排在哪一天？\n4. **period（时段）**：会议安排在哪个时段（例如上午、下午，或具体时间）？\n\n请提供这些信息，我会立即为你创建这次会议日程。",
+    "exhausted": false,
+    "error": null
+  },
+  "result": {
+    "success": true,
+    "failure_reasons": [],
+    "attributions": [],
+    "earliest_blocker": null,
+    "budget_exhausted": false
+  }
+}

@@ -1,0 +1,55 @@
+## E2 绿态定向收口（2026-11-05）
+
+$ .venv/Scripts/python.exe -m pytest tests/test_e2e_tools.py tests/test_e2e_retrieval_adapter.py tests/test_e2e_sandbox.py tests/test_e2e_loading.py -q
+........................................................................ [ 83%]
+..............                                                           [100%]
+86 passed in 0.35s
+pytest-exit=0
+
+$ .venv/Scripts/python.exe -m ruff check experiments/agent_e2e/tools.py experiments/agent_e2e/retrieval_adapter.py tests/test_e2e_tools.py tests/test_e2e_retrieval_adapter.py
+F401 [*] `experiments.agent_e2e.loading.ResourceSpec` imported but unused
+  --> experiments\agent_e2e\tools.py:20:43
+   |
+18 | from collections.abc import Callable
+19 |
+20 | from experiments.agent_e2e.loading import ResourceSpec
+   |                                           ^^^^^^^^^^^^
+21 | from experiments.agent_e2e.retrieval_adapter import RetrievalAdapter
+22 | from experiments.agent_e2e.sandbox import PERMISSION_BY_STATE_KEY, Sandbox
+   |
+help: Remove unused import: `experiments.agent_e2e.loading.ResourceSpec`
+   |
+19 |
+   - from experiments.agent_e2e.loading import ResourceSpec
+20 | from experiments.agent_e2e.retrieval_adapter import RetrievalAdapter
+   |
+
+F401 [*] `experiments.agent_e2e.loading.ResourceSpec` imported but unused
+  --> tests\test_e2e_retrieval_adapter.py:9:52
+   |
+ 7 | from agent_retrieval import rank_candidates
+ 8 |
+ 9 | from experiments.agent_e2e.loading import Catalog, ResourceSpec, default_paths, load_catalog
+   |                                                    ^^^^^^^^^^^^
+10 | from experiments.agent_e2e.retrieval_adapter import RetrievalAdapter
+   |
+help: Remove unused import: `experiments.agent_e2e.loading.ResourceSpec`
+   |
+8  |
+   - from experiments.agent_e2e.loading import Catalog, ResourceSpec, default_paths, load_catalog
+9  + from experiments.agent_e2e.loading import Catalog, default_paths, load_catalog
+10 | from experiments.agent_e2e.retrieval_adapter import RetrievalAdapter
+   |
+
+Found 2 errors.
+[*] 2 fixable with the `--fix` option.
+ruff-exit=1
+$ .venv/Scripts/python.exe -m pytest tests/test_e2e_tools.py tests/test_e2e_retrieval_adapter.py tests/test_e2e_sandbox.py tests/test_e2e_loading.py -q
+........................................................................ [ 83%]
+..............                                                           [100%]
+86 passed in 0.40s
+pytest-exit=0
+
+$ .venv/Scripts/python.exe -m ruff check experiments/agent_e2e/tools.py experiments/agent_e2e/retrieval_adapter.py tests/test_e2e_tools.py tests/test_e2e_retrieval_adapter.py
+All checks passed!
+ruff-exit=0

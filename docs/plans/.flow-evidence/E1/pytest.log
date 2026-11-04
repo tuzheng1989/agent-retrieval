@@ -1,0 +1,16 @@
+.......................................                                  [100%]
+39 passed in 0.44s
+exit=0
+All checks passed!
+ruff-exit=0
+
+## revision 2（主控退回四项补齐后定向收口，2026-11-05）
+
+$ .venv/Scripts/python.exe -m pytest tests/test_e2e_loading.py tests/test_e2e_sandbox.py tests/test_core_zero_dep.py -q
+...............................................                          [100%]
+47 passed in 0.48s
+exit=0
+
+$ .venv/Scripts/python.exe -m ruff check experiments/agent_e2e/loading.py experiments/agent_e2e/sandbox.py tests/test_e2e_loading.py tests/test_e2e_sandbox.py
+All checks passed!
+ruff-exit=0

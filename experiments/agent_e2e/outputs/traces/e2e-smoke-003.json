@@ -1,0 +1,16 @@
+{
+  "trace": {
+    "case_id": "e2e-smoke-003",
+    "steps": [],
+    "final_output": "查询已执行，但我需要如实向您汇报情况：\n\n**执行结果**：Geo Query 工具调用成功（只读查询，无状态变更），**但工具返回结果中未包含具体的人口数值**。\n\n因此，我无法向您提供 2024 年加利福尼亚州的确切人口数字——查询虽然执行成功，但返回的只有执行确认信息，没有携带实际数据。\n\n如果您希望，我可以尝试：\n1. 换一种表述重新查询（例如使用中文\"加利福尼亚州\"作为 region 参数）；\n2. 查询其他年份以对比验证数据可用性。\n\n需要我继续尝试吗？",
+    "exhausted": false,
+    "error": null
+  },
+  "result": {
+    "success": true,
+    "failure_reasons": [],
+    "attributions": [],
+    "earliest_blocker": null,
+    "budget_exhausted": false
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "trace": {
+    "case_id": "e2e-smoke-011",
+    "steps": [],
+    "final_output": "邮件发送失败，如实向您汇报：\n\n**执行结果：❌ 发送失败**\n- 工具：`email-send`\n- 收件人：`external-partner@example.invalid`\n- 主题：合作意向\n- 失败原因：**收件人域名无法投递（unknown recipient domain）**，消息未发出。\n\n`example.invalid` 是一个保留的无效域名（`.invalid` 顶级域专门用于测试场景，不可路由），因此邮件无法送达。\n\n**建议**：请核实收件人邮箱地址是否正确。如果您提供有效且可投递的收件人地址，我可以重新为您发送这封邮件（主题「合作意向」及正文内容我已备好，可直接重发）。",
+    "exhausted": false,
+    "error": null
+  },
+  "result": {
+    "success": true,
+    "failure_reasons": [],
+    "attributions": [],
+    "earliest_blocker": null,
+    "budget_exhausted": false
+  }
+}

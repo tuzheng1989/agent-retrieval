@@ -1,0 +1,32 @@
+........................................................................ [ 56%]
+........................................................                 [100%]
+128 passed in 3.05s
+## revision 2（tool call 主路径修复后回归，2026-11-05）
+$ pytest tests/test_e2e_agent.py tests/test_e2e_tools.py tests/test_e2e_scoring.py tests/test_e2e_runner.py tests/test_e2e_loading.py tests/test_e2e_sandbox.py tests/test_e2e_retrieval_adapter.py -q
+........................................................................ [ 55%]
+..........................................................               [100%]
+130 passed in 3.13s
+exit=0
+
+$ ruff check experiments/agent_e2e/agent.py experiments/agent_e2e/smoke.py tests/test_e2e_agent.py
+All checks passed!
+exit=0
+
+## revision 3（live 9/12 三条失败定性修复，2026-11-05）
+
+$ JSONL 自检（逐行 JSON 合法 + id 唯一 + gold/fixture 引用完整，经 loading.load_cases 全量校验）
+12 cases loaded, ids unique=True
+001 request: Schedule a meeting for project Atlas on 2026-11-12 afternoon with Mei and Chen,  ...
+005 request: Write a quarterly sales report titled 'Q3 销售季度报告' using quarterly-sales-2026 as  ...
+001/005 required_state 断言面未动 OK
+exit=0
+
+$ pytest tests/test_e2e_agent.py tests/test_e2e_tools.py tests/test_e2e_scoring.py tests/test_e2e_runner.py tests/test_e2e_loading.py tests/test_e2e_sandbox.py tests/test_e2e_retrieval_adapter.py -q
+........................................................................ [ 53%]
+..............................................................           [100%]
+134 passed in 3.35s
+exit=0
+
+$ ruff check experiments/agent_e2e/scorer.py experiments/agent_e2e/agent.py experiments/agent_e2e/smoke.py tests/test_e2e_agent.py tests/test_e2e_scoring.py
+All checks passed!
+exit=0

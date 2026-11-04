@@ -1,0 +1,81 @@
+{
+  "total": 12,
+  "success": 12,
+  "failure": 0,
+  "failure_by_behavior": {},
+  "attribution_counts": {},
+  "cases": [
+    {
+      "case_id": "e2e-smoke-001",
+      "success": true,
+      "failure_reasons": [],
+      "attributions": []
+    },
+    {
+      "case_id": "e2e-smoke-002",
+      "success": true,
+      "failure_reasons": [],
+      "attributions": []
+    },
+    {
+      "case_id": "e2e-smoke-003",
+      "success": true,
+      "failure_reasons": [],
+      "attributions": []
+    },
+    {
+      "case_id": "e2e-smoke-004",
+      "success": true,
+      "failure_reasons": [],
+      "attributions": []
+    },
+    {
+      "case_id": "e2e-smoke-005",
+      "success": true,
+      "failure_reasons": [],
+      "attributions": []
+    },
+    {
+      "case_id": "e2e-smoke-006",
+      "success": true,
+      "failure_reasons": [],
+      "attributions": []
+    },
+    {
+      "case_id": "e2e-smoke-007",
+      "success": true,
+      "failure_reasons": [],
+      "attributions": []
+    },
+    {
+      "case_id": "e2e-smoke-008",
+      "success": true,
+      "failure_reasons": [],
+      "attributions": []
+    },
+    {
+      "case_id": "e2e-smoke-009",
+      "success": true,
+      "failure_reasons": [],
+      "attributions": []
+    },
+    {
+      "case_id": "e2e-smoke-010",
+      "success": true,
+      "failure_reasons": [],
+      "attributions": []
+    },
+    {
+      "case_id": "e2e-smoke-011",
+      "success": true,
+      "failure_reasons": [],
+      "attributions": []
+    },
+    {
+      "case_id": "e2e-smoke-012",
+      "success": true,
+      "failure_reasons": [],
+      "attributions": []
+    }
+  ]
+}

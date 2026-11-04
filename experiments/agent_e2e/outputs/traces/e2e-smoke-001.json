@@ -1,0 +1,16 @@
+{
+  "trace": {
+    "case_id": "e2e-smoke-001",
+    "steps": [],
+    "final_output": "两项操作均已完成：\n\n**✅ 日历事件创建成功**（calendar-create）\n- 项目：Atlas\n- 日期：2026-11-12（下午时段）\n- 参会人：Mei、Chen\n\n**✅ 邮件发送成功**（email-send）\n- 收件人：wang@corp.example.com\n- 主题：Atlas 会议通知\n- 正文：告知会议安排（2026-11-12 下午，参会人 Mei、Chen），请对方知悉确认\n\n安排已就绪，如需调整时间或补充参会人，随时告诉我。",
+    "exhausted": false,
+    "error": null
+  },
+  "result": {
+    "success": true,
+    "failure_reasons": [],
+    "attributions": [],
+    "earliest_blocker": null,
+    "budget_exhausted": false
+  }
+}
