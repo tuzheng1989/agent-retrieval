@@ -1,0 +1,3 @@
+[redis_snapshot_en_skill] 快照 2299c92e15d4…（publish） owner=catalog-v1 语料 10 条 回读 10/10 键
+[redis_snapshot_en_skill] 组件参与: {'snapshot_meta_present': True, 'snapshot_readback_keys': True, 'snapshot_readback_dims': True, 'snapshot_publish_roundtrip': True}
+[redis_snapshot_en_skill] PASS（S-D4 组件存在性断言全过）

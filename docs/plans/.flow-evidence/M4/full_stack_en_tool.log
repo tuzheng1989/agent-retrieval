@@ -1,0 +1,7 @@
+[full_stack_en_tool] Run 缓存: run_id=scenario-full_stack_en_tool 查询向量已入后端缓存（README §4 两级缓存）
+[full_stack_en_tool] 判定面: ChatJudge 判 top-3 → probabilities={'geo-query': 1.0, 'doc-search': 0.1, 'chart-render': 0.05} select_with_judge(selected=geo-query，门槛 0.5，None=弃权)
+[full_stack_en_tool] docgen: build_docgen → DocGenClient（identity=('glm-5.3-flash', 'chat', 5)，已配置，不强制真生成）
+[full_stack_en_tool] Run 收尾: clear_run_cache() 完成
+[full_stack_en_tool] 检索: 候选 8 个，top-1 = geo-query（gold = geo-query，观察项不断言）
+[full_stack_en_tool] 组件参与: {'snapshot_meta_present': True, 'snapshot_readback_keys': True, 'snapshot_readback_dims': True, 'snapshot_publish_roundtrip': True, 'bm25_participated': True, 'vector_participated': True, 'run_cache_participated': True}
+[full_stack_en_tool] PASS（S-D4 组件存在性断言全过）

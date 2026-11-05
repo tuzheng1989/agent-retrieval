@@ -1,0 +1,128 @@
+=== [1] 全文件：python -m pytest tests/test_scenario_matrix.py -q ===
+........                                                                 [100%]
+8 passed in 0.08s
+exit=0
+
+=== [-k 抽查] python -m pytest tests/test_scenario_matrix.py -k core_only_en_tool -v ===
+collecting ... collected 8 items / 7 deselected / 1 selected
+tests/test_scenario_matrix.py::test_core_only_cell[core_only_en_tool] PASSED [100%]
+======================= 1 passed, 7 deselected in 0.10s =======================
+exit=0
+
+=== [-k 抽查] python -m pytest tests/test_scenario_matrix.py -k core_only_zh_tool -v ===
+collecting ... collected 8 items / 7 deselected / 1 selected
+tests/test_scenario_matrix.py::test_core_only_cell[core_only_zh_tool] PASSED [100%]
+======================= 1 passed, 7 deselected in 0.06s =======================
+exit=0
+
+=== [-k 抽查] python -m pytest tests/test_scenario_matrix.py -k core_only_en_skill -v ===
+collecting ... collected 8 items / 7 deselected / 1 selected
+tests/test_scenario_matrix.py::test_core_only_cell[core_only_en_skill] PASSED [100%]
+======================= 1 passed, 7 deselected in 0.07s =======================
+exit=0
+
+=== [-k 抽查] python -m pytest tests/test_scenario_matrix.py -k core_only_zh_skill -v ===
+collecting ... collected 8 items / 7 deselected / 1 selected
+tests/test_scenario_matrix.py::test_core_only_cell[core_only_zh_skill] PASSED [100%]
+======================= 1 passed, 7 deselected in 0.07s =======================
+exit=0
+
+=== [-k 抽查] python -m pytest tests/test_scenario_matrix.py -k api_embed_en_tool -v ===
+collecting ... collected 8 items / 7 deselected / 1 selected
+tests/test_scenario_matrix.py::test_api_embed_cell[api_embed_en_tool] PASSED [100%]
+======================= 1 passed, 7 deselected in 0.05s =======================
+exit=0
+
+=== [-k 抽查] python -m pytest tests/test_scenario_matrix.py -k api_embed_zh_tool -v ===
+collecting ... collected 8 items / 7 deselected / 1 selected
+tests/test_scenario_matrix.py::test_api_embed_cell[api_embed_zh_tool] PASSED [100%]
+======================= 1 passed, 7 deselected in 0.06s =======================
+exit=0
+
+=== [-k 抽查] python -m pytest tests/test_scenario_matrix.py -k api_embed_en_skill -v ===
+collecting ... collected 8 items / 7 deselected / 1 selected
+tests/test_scenario_matrix.py::test_api_embed_cell[api_embed_en_skill] PASSED [100%]
+======================= 1 passed, 7 deselected in 0.07s =======================
+exit=0
+
+=== [-k 抽查] python -m pytest tests/test_scenario_matrix.py -k api_embed_zh_skill -v ===
+collecting ... collected 8 items / 7 deselected / 1 selected
+tests/test_scenario_matrix.py::test_api_embed_cell[api_embed_zh_skill] PASSED [100%]
+======================= 1 passed, 7 deselected in 0.06s =======================
+exit=0
+
+=== [回归连带] python -m pytest tests/test_scenario_matrix.py tests/test_core_zero_dep.py tests/test_e2e_loading.py -q ===
+.........................................                                [100%]
+41 passed in 0.43s
+exit=0
+
+=== [ruff] ruff check tests/test_scenario_matrix.py ===
+All checks passed!
+exit=0
+
+==========================================================
+## revision 2：审计 P1 修复——零 extras 守护改基线差集语义
+## （_MODULES_AT_IMPORT 基线快照 + sys.modules 差集断言）
+==========================================================
+
+=== [审计验证①] python -m pytest tests/test_scenario_matrix.py -q ===
+........                                                                 [100%]
+8 passed in 0.09s
+exit=0
+
+=== [审计验证②·假红复现命令] python -m pytest tests/test_api_embedder.py tests/test_scenario_matrix.py -q ===
+........................                                                 [100%]
+24 passed in 0.21s
+exit=0
+
+=== [审计验证③·回归] python -m pytest tests/test_e2e_loading.py tests/test_scenario_matrix.py -q ===
+........................................                                 [100%]
+40 passed in 0.55s
+exit=0
+
+=== [运行期污染探针] python -m pytest tests/test_api_embedder.py tests/test_local_pooling.py tests/test_run_cache.py tests/test_scenario_matrix.py -q ===
+# 探针目的：这三个字母序更早的文件含函数体级 extras 导入（test_api_embedder.py:215、
+# test_local_pooling.py:199-200、test_run_cache.py:225），其测试先于本文件执行——
+# 实证差集方案在全量运行期顺序下的残余暴露面
+..............................................                           [100%]
+46 passed in 0.27s
+exit=0
+
+=== [形态复检] 8 次 -k 抽查（-v 点名所选用例）===
+[core_only_en_tool] collecting ... collected 8 items / 7 deselected / 1 selected
+[core_only_en_tool] tests/test_scenario_matrix.py::test_core_only_cell[core_only_en_tool] PASSED [100%]
+[core_only_en_tool] ======================= 1 passed, 7 deselected in 0.05s =======================
+[core_only_zh_tool] collecting ... collected 8 items / 7 deselected / 1 selected
+[core_only_zh_tool] tests/test_scenario_matrix.py::test_core_only_cell[core_only_zh_tool] PASSED [100%]
+[core_only_zh_tool] ======================= 1 passed, 7 deselected in 0.06s =======================
+[core_only_en_skill] collecting ... collected 8 items / 7 deselected / 1 selected
+[core_only_en_skill] tests/test_scenario_matrix.py::test_core_only_cell[core_only_en_skill] PASSED [100%]
+[core_only_en_skill] ======================= 1 passed, 7 deselected in 0.05s =======================
+[core_only_zh_skill] collecting ... collected 8 items / 7 deselected / 1 selected
+[core_only_zh_skill] tests/test_scenario_matrix.py::test_core_only_cell[core_only_zh_skill] PASSED [100%]
+[core_only_zh_skill] ======================= 1 passed, 7 deselected in 0.05s =======================
+[api_embed_en_tool] collecting ... collected 8 items / 7 deselected / 1 selected
+[api_embed_en_tool] tests/test_scenario_matrix.py::test_api_embed_cell[api_embed_en_tool] PASSED [100%]
+[api_embed_en_tool] ======================= 1 passed, 7 deselected in 0.07s =======================
+[api_embed_zh_tool] collecting ... collected 8 items / 7 deselected / 1 selected
+[api_embed_zh_tool] tests/test_scenario_matrix.py::test_api_embed_cell[api_embed_zh_tool] PASSED [100%]
+[api_embed_zh_tool] ======================= 1 passed, 7 deselected in 0.05s =======================
+[api_embed_en_skill] collecting ... collected 8 items / 7 deselected / 1 selected
+[api_embed_en_skill] tests/test_scenario_matrix.py::test_api_embed_cell[api_embed_en_skill] PASSED [100%]
+[api_embed_en_skill] ======================= 1 passed, 7 deselected in 0.06s =======================
+[api_embed_zh_skill] collecting ... collected 8 items / 7 deselected / 1 selected
+[api_embed_zh_skill] tests/test_scenario_matrix.py::test_api_embed_cell[api_embed_zh_skill] PASSED [100%]
+[api_embed_zh_skill] ======================= 1 passed, 7 deselected in 0.08s =======================
+
+=== [ruff] ruff check tests/test_scenario_matrix.py ===
+All checks passed!
+exit=0
+
+=== [全量实跑·触发依据] python -m pytest tests/ -q ===
+# P1 根因即 CI 全量形态；本修复改动的守护语义与全仓收集顺序耦合，
+# 按执行者角色第 3 条（共享测试设施且定向范围不可信→全量并记录触发依据）实跑闭环。
+........................................................................ [ 72%]
+........................................................................ [ 90%]
+....................................                                     [100%]
+396 passed in 228.60s (0:03:48)
+exit=0

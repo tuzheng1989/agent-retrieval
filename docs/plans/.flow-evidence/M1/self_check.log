@@ -1,0 +1,7 @@
+文档: C:\Users\tuzhe\runspace\agent-retrieval\docs\scenario-matrix.md
+明细表格数: 24（期望 24 = 4×2×3）
+状态分布: 待验证 16 / pending.zh_plot 8（期望 16/8）
+格 id 全仓唯一: 通过（文档外出现 0 处）
+姿态-README 锚定核对: 4/4 机械通过；人工对照表 -> C:\Users\tuzhe\runspace\agent-retrieval\docs\plans\.flow-evidence\M1\readme_anchor_map.md
+
+全部断言通过。
