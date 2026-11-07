@@ -446,3 +446,89 @@ Cost (measured): Edge face embedding 84 min CPU once, then free forever;
 GLM baseline = per-query API calls; bge = 94 h CPU — not a cost but a
 feasibility wall. All numbers reproducible via
 `experiments.benchmarks.embedding_paired` (`--embed-only` then default mode).
+
+## Jev question type: score rubric vs noul probability — rejected; P(3)-fold follow-up candidate (2026-11-07)
+
+Pre-registered in issue #13 (gates S0–S3 published before any run). Question: does replacing the
+binary Noul question with a 4-level ordered Score rubric (0 Unrelated / 1 Topical only /
+2 Partial coverage / 3 Direct coverage) improve reranking? Noul's answer is already a continuous
+probability and `select_with_jev` argmaxes it, so the real comparison is **rubric degree-expression
+vs binary-probability expression** under identical state/model/batching. Rubric level 2 shares the
+noul criteria.true phrase verbatim ("perform a specific operation needed for the task"), making
+P(≥2) the noul-aligned fold. Primary fold (pre-registered): expectation/3 normalized; sensitivity
+folds recomputed offline from the stored distributions, not in the gate.
+
+**Main surface (SkillRet docgen + fusion w20, 600 paired cases — one pre-registered expansion
+after pilot power said n = 399):**
+
+| Metric | Δ (score − noul) | CI95 | improved/tied/worsened |
+|---|---|---|---|
+| MRR | +0.0122 | [−0.0082, +0.0324] | 83/442/75 |
+| recall@5 | −0.0017 | [−0.0158, +0.0125] | 14/567/19 |
+| completeness@5 | +0.0017 | [−0.0150, +0.0183] | 13/575/12 |
+| ndcg@5 | +0.0146 | [+0.0002, +0.0291] | 97/414/89 |
+| recall@10 | −0.0044 | [−0.0114, +0.0028] | 2/588/10 |
+| completeness@10 | −0.0083 | [−0.0183, +0.0017] | 2/591/7 |
+| **ndcg@10 (primary)** | **+0.0130** | **[+0.0004, +0.0255]** | 102/388/110 |
+
+Primary CI clears zero, but three secondary means are negative (recall@5, recall@10,
+completeness@10) → the zero-regression requirement fails → adoption gate not met.
+
+**Secondary surface (ToolRet docgen + fusion w20 instruction mode, 100 cases):** no signal —
+NDCG@10 −0.0069 [−0.0354, +0.0214]; all seven CIs cross zero. gold-in-window@20 = 0.396: the
+recall-bottleneck surface leaves the judge little to reorder (consistent with the earlier
+"Jev gains grow as stage-1 recall weakens" law only up to the point where gold is absent).
+
+**Well-formedness (S0/S1, all passed):** 0 malformed score distributions across 752 judged cases;
+legend echoed verbatim in 100% of answers; per-answer fold vs endpoint's own expected score max
+disagreement 0.01 (tolerance 0.02). Fold self-jitter (3 cases × 2 passes, 60 candidate scores):
+max 0.0367 / mean 0.0083 — noul's own re-run jitter was max 0.05 / mean 0.0127. Non-gate
+reproduction check: this run's jev_noul vs the published `jev-skillret-docgen-w20.json` jev arm,
+300 shared cases — mean |Δ| ≤ 0.0051, all CIs straddle zero (frozen arm did not drift).
+
+**Sensitivity folds (offline refold, NOT in the gate):**
+
+| Fold | NDCG@10 Δ vs noul | CI95 | recall@10 Δ | CI95 |
+|---|---|---|---|---|
+| expected (primary) | +0.0130 | [+0.0004, +0.0255] | −0.0044 | [−0.0114, +0.0028] |
+| P(≥2) (noul-aligned) | −0.0548 | [−0.0677, −0.0421] | −0.0325 | [−0.0456, −0.0208] |
+| P(3) (top level only) | +0.0279 | [+0.0132, +0.0430] | +0.0067 | [−0.0008, +0.0150] |
+| endpoint score | +0.0142 | [+0.0014, +0.0270] | −0.0044 | [−0.0114, +0.0028] |
+
+**Abstention smoke (descriptive, no gate)** — 6 no-match queries against the SkillRet full-pool
+fusion w20 window, window-max readings vs the 0.7 line: noul crossed 3/6, P(3) 1/6, P(≥2) 4/6.
+On `chart_ambiguous` and `purple elephant` P(3) collapsed (0.36 / 0.39) where noul bound
+(0.82 / 0.71). But on the bare greeting ("Hello, good morning") both bind — the score endpoint
+asserts P(3) = 0.96 on no-task text, so score is not intrinsically safer against no-match
+queries; its conservatism is specific to the direct-vs-partial discrimination, not to nonsense
+detection.
+
+Mechanism: the rubric's ranking value concentrates in the 2-vs-3 (partial vs direct coverage)
+distinction. The expectation fold dilutes it with partial-coverage mass; the noul-aligned P(≥2)
+fold is actively harmful (it re-creates noul's "at least one step" anchor inside a rubric that
+also scores topical candidates at level 1... and partials at 2, drowning the direct signal);
+the P(3) fold is stronger than the primary fold on every graded metric and nearly non-negative
+on recall@10.
+
+**Verdict: rejected** — score does not replace noul as the default question type (primary CI
+passes, zero-regression fails; secondary surface shows no generalization). Follow-up candidate
+(requires its own pre-registration): P(3)-fold score rubric on the main surface — the
+pre-registered sensitivity data already show NDCG@10 CI > 0 with recall@10 CI barely crossing
+zero at n = 600. The expected and P(≥2) folds should not be revisited.
+
+Cost (measured): ≈ 8.3M input / ≈ 0.5M output tokens total (smoke ×2 + pilot 40 + main 600 +
+ToolRet 100 + abstain). score/noul input ratio 1.38, output ratio 0.83, latency comparable —
+below the 3× disclosure threshold.
+
+Reports: `jev-qt-smoke.json`, `jev-qt-smoke2.json`, `jev-qt-skillret-pilot-40.json`,
+`jev-qt-skillret-600.json`, `jev-qt-toolret-100.json`, `jev-qt-abstain.json`,
+`jev-qt-skillret-600-refold-{at_least_2,top,endpoint}.json`.
+
+Reproduce:
+
+```powershell
+python -m experiments.benchmarks.jev_question_paired --bench skillret --arm fusion --corpus docgen --limit 600 --window 20 --output experiments/jev-qt-skillret-600.json
+python -m experiments.benchmarks.ablation_stats pair --a experiments/jev-qt-skillret-600.json --arm-a jev_score --b experiments/jev-qt-skillret-600.json --arm-b jev_noul --metrics mrr ndcg@5 ndcg@10 recall@5 recall@10 completeness@5 completeness@10
+python -m experiments.benchmarks.jev_question_paired --bench toolret --arm fusion --corpus docgen --query-mode instruction --limit 100 --window 20 --output experiments/jev-qt-toolret-100.json
+python -m experiments.benchmarks.jev_question_abstain --arm fusion --output experiments/jev-qt-abstain.json
+```
