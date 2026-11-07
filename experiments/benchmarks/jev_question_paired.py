@@ -137,23 +137,28 @@ _FOLD_FUNCTIONS = {"expected": fold_expected, "top": fold_top}
 
 
 def fresh_sampled_benchmark(
-    bench: str, data_dir: Path, limit: int, *, corpus: str, exclude_report: Path,
+    bench: str, data_dir: Path, limit: int, *, corpus: str, exclude_reports: list[Path],
 ):
-    """fresh 切片采样：pinned split 滤除 ``exclude_report`` 已用 case 后再 spread。
+    """fresh 切片采样：pinned split 滤除各 ``exclude_reports`` 已用 case 后再 spread。
 
-    P(3) 确认实验（#14）的确定性采样规则：fold 选择发生在 #13 的 600 case 上，
-    确认样本必须与选样零重叠。滤除后列表仍是全 split 覆盖的分层 spread 样本。
-    skillret-only：toolret 的 loader 在加载期就截断，滤除后无法保证剩余量。
+    P(3) 确认链的确定性采样规则：#13 选折叠、#14 首次确认，每次确认样本都必须
+    与此前全部样本零重叠（fresh-3 = split − #13 − #14）。滤除后列表仍是全
+    split 覆盖的分层 spread 样本。skillret-only：toolret 的 loader 在加载期就
+    截断，滤除后无法保证剩余量。
     """
     if bench != "skillret":
         raise ValueError("--exclude-report sampling is SkillRet-only")
     dataset, _sampled = load_sampled_benchmark(bench, data_dir, limit, corpus=corpus)
-    excluded = set(json.loads(exclude_report.read_text(encoding="utf-8"))["dataset"]["case_ids"])
+    excluded: set[str] = set()
+    for exclude_report in exclude_reports:
+        excluded.update(
+            json.loads(exclude_report.read_text(encoding="utf-8"))["dataset"]["case_ids"]
+        )
     remaining = [case for case in dataset.cases if case.id not in excluded]
     if len(remaining) < limit:
         raise ValueError(
             f"only {len(remaining)} cases left after excluding {len(excluded)} from "
-            f"{exclude_report.name} — need {limit}"
+            f"{len(exclude_reports)} reports — need {limit}"
         )
     sampled = [remaining[(index * len(remaining)) // limit] for index in range(limit)]
     return dataset, sampled
@@ -168,10 +173,10 @@ def run(args: argparse.Namespace) -> dict:
         raise ValueError("instruction query mode is ToolRet-only")
 
     fold_function = _FOLD_FUNCTIONS[args.fold]
-    if args.exclude_report is not None:
+    if args.exclude_report:
         dataset, cases = fresh_sampled_benchmark(
             args.bench, args.data_dir, args.limit,
-            corpus=args.corpus, exclude_report=args.exclude_report,
+            corpus=args.corpus, exclude_reports=args.exclude_report,
         )
     else:
         dataset, cases = load_sampled_benchmark(args.bench, args.data_dir, args.limit,
@@ -358,7 +363,7 @@ def run(args: argparse.Namespace) -> dict:
             "question_types": ["noul", "score"],
             "score_rubric_levels": SCORE_LEVELS,
             "primary_fold": args.fold,
-            "exclude_report": str(args.exclude_report) if args.exclude_report else None,
+            "exclude_reports": [str(path) for path in args.exclude_report] if args.exclude_report else None,
             "sampling": (
                 ("fresh spread on pinned split minus excluded case ids"
                  if args.exclude_report else "spread across pinned test split")
@@ -420,9 +425,9 @@ def main() -> int:
     parser.add_argument("--fold", choices=("expected", "top"), default="expected",
                         help="score 臂的主折叠：expected = 期望分÷3（#13 原主折叠），"
                              "top = P(3)（#14 确认臂）")
-    parser.add_argument("--exclude-report", type=Path, default=None,
-                        help="fresh 采样：pinned split 滤除该报告已用 case 后再 spread"
-                             "（skillret-only，fold 选择样本与确认样本零重叠）")
+    parser.add_argument("--exclude-report", type=Path, nargs="+", default=None,
+                        help="fresh 采样：pinned split 滤除各报告已用 case 后再 spread"
+                             "（可多份，skillret-only，折叠选择与历次确认样本零重叠）")
     parser.add_argument("--k", nargs="+", type=int, default=(5, 10))
     parser.add_argument("--data-dir", type=Path, default=_DEFAULT_DATA_DIR)
     parser.add_argument("--cache-path", type=Path, default=_DEFAULT_CACHE_PATH)

@@ -208,7 +208,7 @@ def offline_top_report(tmp_path, monkeypatch):
     args = argparse.Namespace(
         bench="skillret", arm="bm25", corpus="plain", query_mode="query",
         limit=4, window=20, k=(5, 10), data_dir=tmp_path, cache_path=tmp_path / "c.db",
-        fold="top", exclude_report=exclude,
+        fold="top", exclude_report=[exclude],
     )
     report = paired_module.run(args)
     output = tmp_path / "report-top.json"
@@ -226,7 +226,8 @@ class TestFoldTopAndFreshSampling:
         assert not (sampled & used)
         assert len(sampled) == 4
         assert report["configuration"]["primary_fold"] == "top"
-        assert report["configuration"]["exclude_report"].endswith("used.json")
+        assert len(report["configuration"]["exclude_reports"]) == 1
+        assert report["configuration"]["exclude_reports"][0].endswith("used.json")
         assert "fresh spread" in report["configuration"]["sampling"]
 
     def test_fresh_sampling_rejects_non_skillret(self, tmp_path, monkeypatch):
@@ -234,7 +235,7 @@ class TestFoldTopAndFreshSampling:
         exclude.write_text(json.dumps({"dataset": {"case_ids": ["x"]}}), encoding="utf-8")
         with pytest.raises(ValueError, match="SkillRet-only"):
             paired_module.fresh_sampled_benchmark("toolret", tmp_path, 1,
-                                                  corpus="plain", exclude_report=exclude)
+                                                  corpus="plain", exclude_reports=[exclude])
 
     def test_fresh_sampling_needs_enough_remaining(self, tmp_path, monkeypatch):
         resources = [Resource("r1", "n", "d")]
@@ -246,7 +247,22 @@ class TestFoldTopAndFreshSampling:
         exclude.write_text(json.dumps({"dataset": {"case_ids": ["c1"]}}), encoding="utf-8")
         with pytest.raises(ValueError, match="cases left"):
             paired_module.fresh_sampled_benchmark("skillret", tmp_path, 1,
-                                                  corpus="plain", exclude_report=exclude)
+                                                  corpus="plain", exclude_reports=[exclude])
+
+    def test_fresh_sampling_unions_multiple_reports(self, tmp_path, monkeypatch):
+        resources = [Resource(f"r{index}", "n", "d") for index in range(6)]
+        cases = [Case(f"c{index}", f"q{index}", frozenset()) for index in range(6)]
+        dataset = BenchmarkDataset("skillret", "test", lambda r: r.name, resources, cases)
+        monkeypatch.setattr(paired_module, "load_sampled_benchmark",
+                            lambda *a, **k: (dataset, list(dataset.cases)))
+        first = tmp_path / "used1.json"
+        second = tmp_path / "used2.json"
+        first.write_text(json.dumps({"dataset": {"case_ids": ["c0", "c1"]}}), encoding="utf-8")
+        second.write_text(json.dumps({"dataset": {"case_ids": ["c2", "c3"]}}), encoding="utf-8")
+        _dataset, sampled = paired_module.fresh_sampled_benchmark(
+            "skillret", tmp_path, 2, corpus="plain", exclude_reports=[first, second],
+        )
+        assert {case.id for case in sampled} <= {"c4", "c5"}
 
     def test_top_primary_arm_refolds_to_itself(self, offline_top_report):
         _report, output = offline_top_report

@@ -594,3 +594,60 @@ python -m experiments.benchmarks.jev_question_paired --bench skillret --arm fusi
 python -m experiments.benchmarks.jev_question_paired --bench skillret --arm fusion --corpus docgen --limit 600 --window 20 --fold top --exclude-report experiments/jev-qt-skillret-600.json --output experiments/jev-p3-skillret-600.json
 python -m experiments.benchmarks.ablation_stats pair --a experiments/jev-p3-skillret-600.json --arm-a jev_score --b experiments/jev-p3-skillret-600.json --arm-b jev_noul --metrics mrr ndcg@5 ndcg@10 recall@5 recall@10 completeness@5 completeness@10
 ```
+
+## Jev P(3) no-confident-regression confirmation: PASSES — adopted as scenario coexistence, line closed (2026-11-08)
+
+Pre-registered in issue #15 before any run. Third fresh slice (pinned split minus #13's and
+#14's 600-case sets, spread to 600; machine-verified zero overlap with both). Criterion
+variant registered here: secondary metrics count as regressing only when their paired-diff
+CI95 **upper bound < 0** (confidently negative). Justification is prior to the data: the
+endpoint quantizes probabilities at 0.01 with same-arm re-run jitter 0.02–0.05 (judge_parity),
+so point-estimate sign-requirements sit inside measurement noise. #13/#14 under this criterion
+are disclosed as consistency evidence only — adoption rests on this run alone.
+
+**Incident**: the first full run aborted mid-way (endpoint connection reset, WinError 10054;
+runner's 5-consecutive-failure gate). Endpoint recovered after ~9 min; identical rerun
+(deterministic sampling, warm vector cache) completed clean — 0 judge errors.
+
+**Main result (fresh-3, 600 paired cases):**
+
+| Metric | Δ (P(3) − noul) | CI95 | improved/tied/worsened |
+|---|---|---|---|
+| MRR | +0.0471 | [+0.0221, +0.0709] | 131/402/67 |
+| recall@5 | +0.0411 | [+0.0225, +0.0597] | 51/530/19 |
+| completeness@5 | +0.0450 | [+0.0217, +0.0683] | 40/547/13 |
+| ndcg@5 | +0.0529 | [+0.0343, +0.0711] | 158/353/89 |
+| recall@10 | +0.0103 | [+0.0003, +0.0203] | 16/577/7 |
+| completeness@10 | +0.0100 | [−0.0033, +0.0233] | 12/582/6 |
+| **ndcg@10 (primary)** | **+0.0420** | **[+0.0262, +0.0573]** | 165/338/97 |
+
+Primary CI clears; every secondary CI upper bound ≥ 0 → **no-confident-regression PASSES**.
+Disclosure: on this slice the stricter point-estimate criterion would also have passed (all
+six secondary means positive) — noted as extra information, not the adoption basis; #14's
+point-estimate failure stands as run.
+
+Effect across the three independent samples: +0.0279 (selection) → +0.0303 (fresh-2) →
++0.0420 (fresh-3) — no decay; the fold's advantage is stable-to-growing. Sensitivity ordering
+reproduces a third time: P(3) +0.042 > expected +0.026 ≈ endpoint +0.024 > P(≥2) −0.050
+(confidently harmful). Abstention precheck 1/6 for the third time — the bare greeting keeps
+getting P(3)=0.96; that is a stable endpoint behavior, not sampling noise.
+
+**Verdict: adopted as scenario coexistence.** P(3)-fold score enters the config guide as the
+question type where graded ranking is consumed (balanced row); noul remains the default where
+a hard recall floor governs and as the conservative fallback. Constraint recorded with the
+adoption: P(3) (or any judge readout) must not be the sole admission gate — pair it with the
+`clearly_related`-style declared-face evidence. SDK promotion stays gated on ADR-0001
+(scenario-matrix need), not on this evidence alone. Line closed: issues #13/#14/#15.
+
+Cost (measured): ≈ 14M input tokens total for the aborted run + rerun + pilot + probes
+(judge calls only; retrieval was cache-warm). score/noul input ratio 1.38 throughout.
+
+Reports: `jev-p3r-abstain.json`, `jev-p3r-skillret-pilot-40.json`,
+`jev-p3r-skillret-600.json` (+ `.log`), `jev-p3r-skillret-600-refold-{expected,at_least_2,endpoint}.json`.
+
+Reproduce:
+
+```powershell
+python -m experiments.benchmarks.jev_question_paired --bench skillret --arm fusion --corpus docgen --limit 600 --window 20 --fold top --exclude-report experiments/jev-qt-skillret-600.json experiments/jev-p3-skillret-600.json --output experiments/jev-p3r-skillret-600.json
+python -m experiments.benchmarks.ablation_stats pair --a experiments/jev-p3r-skillret-600.json --arm-a jev_score --b experiments/jev-p3r-skillret-600.json --arm-b jev_noul --metrics mrr ndcg@5 ndcg@10 recall@5 recall@10 completeness@5 completeness@10
+```

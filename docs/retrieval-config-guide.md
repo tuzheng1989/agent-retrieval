@@ -98,6 +98,18 @@ boundaries — your domain lands between them).
   exists. Do not use it as a recall-failure trigger.
 - Cap per-candidate descriptions (~2,000 chars) — long-tail documents blow the
   System One input budget (HTTP 400).
+- **Question type (issue #13/#14/#15, three pre-registered samples)**: two
+  validated options. The default `noul` ("at least one concrete step", binary
+  probability) stays where a hard recall floor governs. The 4-level `score`
+  rubric folded to **P(3)** (probability of "directly performs the task") is
+  the choice where graded ranking is consumed — NDCG@10 +0.028/+0.030/+0.042
+  (CI lower bounds > 0 on all three independent slices), ~1.4× input tokens.
+  The rubric's information is *all* in level 3: folds that mix in the
+  partial-coverage level (expectation, P(≥2)) range from diluted to actively
+  harmful (P(≥2): −0.05). Constraint: no judge readout — noul probability or
+  P(3) — is a sole admission gate; the endpoint asserts P(3)=0.96 on a bare
+  greeting (stable across three runs). Pair admission with declared-face
+  evidence (`clearly_related`-style).
 
 ### Reranker API (cross-encoder) — validated path, measured and rejected
 - The client and two-stage arm are production-shaped (sparse-result alignment,
