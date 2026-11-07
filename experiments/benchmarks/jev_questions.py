@@ -247,10 +247,11 @@ def refold_report(
 
     返回（并可写 ``output_path``）``{"cases": [{"case_id", "jev_score_<fold>":
     {七指标}}]}`` 形状的报告，臂名供 ``ablation_stats pair --arm-a`` 直接消费。
-    ``fold == "expected"`` 时逐 case 断言重算值与主折叠臂存档一致——重构数学
-    （窗口子集指标 + tail_mrr）的自校验。
+    重算折叠与报告记录的主折叠（``configuration.primary_fold``）同名时，逐 case
+    断言重算值与主折叠臂存档一致——重构数学（窗口子集指标 + tail_mrr）的自校验。
     """
     report = json.loads(report_path.read_text(encoding="utf-8"))
+    primary_fold = report.get("configuration", {}).get("primary_fold", "expected")
     k_values = tuple(report["configuration"]["k_values"])
     window = report["configuration"]["window"]
     rows: list[dict] = []
@@ -271,7 +272,7 @@ def refold_report(
             head, row.get("golds_in_window", []), row["gold_count"],
             row.get("tail_mrr", 0.0), k_values,
         )
-        if fold == "expected" and distributions:
+        if fold == primary_fold and distributions:
             stored = row["jev_score"]
             for name, value in metrics.items():
                 if abs(value - stored[name]) > 1e-9:

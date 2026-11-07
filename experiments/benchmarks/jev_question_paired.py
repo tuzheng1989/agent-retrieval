@@ -35,7 +35,9 @@ from experiments.benchmarks.jev_questions import (
     build_noul_questions,
     build_score_questions,
     distribution_problems,
+    fold_at_least,
     fold_expected,
+    fold_top,
 )
 from experiments.benchmarks.jev_rerank import (
     JEV_DESCRIPTION_MAX_CHARS,
@@ -130,6 +132,33 @@ def judge_pair(state: dict, count: int) -> PairJudgment:
     )
 
 
+#: 主折叠选择（#14 起 P(3)=top 为确认臂；expected 是 #13 的原主折叠，保留向后兼容）。
+_FOLD_FUNCTIONS = {"expected": fold_expected, "top": fold_top}
+
+
+def fresh_sampled_benchmark(
+    bench: str, data_dir: Path, limit: int, *, corpus: str, exclude_report: Path,
+):
+    """fresh 切片采样：pinned split 滤除 ``exclude_report`` 已用 case 后再 spread。
+
+    P(3) 确认实验（#14）的确定性采样规则：fold 选择发生在 #13 的 600 case 上，
+    确认样本必须与选样零重叠。滤除后列表仍是全 split 覆盖的分层 spread 样本。
+    skillret-only：toolret 的 loader 在加载期就截断，滤除后无法保证剩余量。
+    """
+    if bench != "skillret":
+        raise ValueError("--exclude-report sampling is SkillRet-only")
+    dataset, _sampled = load_sampled_benchmark(bench, data_dir, limit, corpus=corpus)
+    excluded = set(json.loads(exclude_report.read_text(encoding="utf-8"))["dataset"]["case_ids"])
+    remaining = [case for case in dataset.cases if case.id not in excluded]
+    if len(remaining) < limit:
+        raise ValueError(
+            f"only {len(remaining)} cases left after excluding {len(excluded)} from "
+            f"{exclude_report.name} — need {limit}"
+        )
+    sampled = [remaining[(index * len(remaining)) // limit] for index in range(limit)]
+    return dataset, sampled
+
+
 def run(args: argparse.Namespace) -> dict:
     if not os.environ.get("TYPESAFE_API_KEY"):
         raise RuntimeError("TYPESAFE_API_KEY is required")
@@ -138,8 +167,15 @@ def run(args: argparse.Namespace) -> dict:
     if args.query_mode == "instruction" and args.bench != "toolret":
         raise ValueError("instruction query mode is ToolRet-only")
 
-    dataset, cases = load_sampled_benchmark(args.bench, args.data_dir, args.limit,
-                                            corpus=args.corpus)
+    fold_function = _FOLD_FUNCTIONS[args.fold]
+    if args.exclude_report is not None:
+        dataset, cases = fresh_sampled_benchmark(
+            args.bench, args.data_dir, args.limit,
+            corpus=args.corpus, exclude_report=args.exclude_report,
+        )
+    else:
+        dataset, cases = load_sampled_benchmark(args.bench, args.data_dir, args.limit,
+                                                corpus=args.corpus)
     embedder = None
     cache = None
     embedder_identity = None
@@ -238,24 +274,28 @@ def run(args: argparse.Namespace) -> dict:
                               "distributions — score arm keeps fusion order", file=sys.stderr)
                     else:
                         fold_scores = {
-                            resource_id: fold_expected(distribution)
+                            resource_id: fold_function(distribution)
                             for resource_id, distribution in score_distributions.items()
                         }
                         score_reranked = rerank_window(baseline, fold_scores, args.window)
-                        disagreements = {
-                            resource_id: abs(
-                                fold_expected(distribution)
-                                - endpoint_scores[resource_id] / (SCORE_LEVELS - 1)
+                        # 端点期望分对照只对 expected 折叠有意义（同定义）。
+                        if args.fold == "expected":
+                            disagreements = {
+                                resource_id: abs(
+                                    fold_expected(distribution)
+                                    - endpoint_scores[resource_id] / (SCORE_LEVELS - 1)
+                                )
+                                for resource_id, distribution in score_distributions.items()
+                            }
+                            endpoint_disagreements += sum(
+                                1 for gap in disagreements.values()
+                                if gap > _ENDPOINT_DISAGREEMENT_TOLERANCE
                             )
-                            for resource_id, distribution in score_distributions.items()
-                        }
-                        endpoint_disagreements += sum(
-                            1 for gap in disagreements.values()
-                            if gap > _ENDPOINT_DISAGREEMENT_TOLERANCE
-                        )
-                        max_endpoint_disagreement = max(
-                            max_endpoint_disagreement, *disagreements.values(),
-                        )
+                            max_endpoint_disagreement = max(
+                                max_endpoint_disagreement, *disagreements.values(),
+                            )
+                        else:
+                            disagreements = {}
                     consecutive_failures = 0
             except Exception as exc:  # noqa: BLE001 — 传输层失败统一走降级路径
                 consecutive_failures += 1
@@ -317,9 +357,12 @@ def run(args: argparse.Namespace) -> dict:
             "state_desc_max_chars": JEV_DESCRIPTION_MAX_CHARS,
             "question_types": ["noul", "score"],
             "score_rubric_levels": SCORE_LEVELS,
-            "primary_fold": "expected_normalized",
+            "primary_fold": args.fold,
+            "exclude_report": str(args.exclude_report) if args.exclude_report else None,
             "sampling": (
-                "spread across pinned test split" if args.bench == "skillret"
+                ("fresh spread on pinned split minus excluded case ids"
+                 if args.exclude_report else "spread across pinned test split")
+                if args.bench == "skillret"
                 else "round-robin source-task prefix"
             ),
             "embedder": embedder_identity,
@@ -374,6 +417,12 @@ def main() -> int:
     parser.add_argument("--query-mode", choices=("query", "instruction"), default="query")
     parser.add_argument("--limit", type=int, default=20)
     parser.add_argument("--window", type=int, default=20)
+    parser.add_argument("--fold", choices=("expected", "top"), default="expected",
+                        help="score 臂的主折叠：expected = 期望分÷3（#13 原主折叠），"
+                             "top = P(3)（#14 确认臂）")
+    parser.add_argument("--exclude-report", type=Path, default=None,
+                        help="fresh 采样：pinned split 滤除该报告已用 case 后再 spread"
+                             "（skillret-only，fold 选择样本与确认样本零重叠）")
     parser.add_argument("--k", nargs="+", type=int, default=(5, 10))
     parser.add_argument("--data-dir", type=Path, default=_DEFAULT_DATA_DIR)
     parser.add_argument("--cache-path", type=Path, default=_DEFAULT_CACHE_PATH)

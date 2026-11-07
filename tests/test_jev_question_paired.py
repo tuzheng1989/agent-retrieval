@@ -126,14 +126,11 @@ class TestFolds:
         assert not distribution_problems({0: 0.34, 1: 0.33, 2: 0.33, 3: 0.0})
 
 
-def _canned_judgment(*, malformed: bool = False):
+def _canned_judgment(count: int = 6, *, malformed: bool = False):
     """构造罐头 PairJudgment：noul 升序（逆转基线序），折叠序与端点期望分一致。"""
-    from types import SimpleNamespace
-
     from experiments.benchmarks.jev_question_paired import PairJudgment
 
-    count = 6
-    noul_scores = {f"c{index}": 0.4 + 0.1 * index for index in range(count)}
+    noul_scores = {f"c{index}": round(0.05 * (index + 1), 4) for index in range(count)}
     distributions = {}
     endpoint = {}
     for index in range(count):
@@ -183,11 +180,82 @@ def offline_report(tmp_path, monkeypatch):
     args = argparse.Namespace(
         bench="skillret", arm="bm25", corpus="plain", query_mode="query",
         limit=3, window=20, k=(5, 10), data_dir=tmp_path, cache_path=tmp_path / "c.db",
+        fold="expected", exclude_report=None,
     )
     report = paired_module.run(args)
     output = tmp_path / "report.json"
     output.write_text(json.dumps(report, ensure_ascii=False), encoding="utf-8")
     return report, output
+
+
+@pytest.fixture()
+def offline_top_report(tmp_path, monkeypatch):
+    """--fold top 的离线报告：P(3) 主折叠 + fresh 采样路径。"""
+    resources = [
+        Resource(f"r{index}", f"name {index}", "shared", "tags") for index in range(1, 9)
+    ]
+    corpus_text = lambda resource: "shared"  # noqa: E731
+    cases = [Case(f"q-{index:03d}", f"shared {index}", frozenset({f"r{index % 8 + 1}"}))
+             for index in range(8)]
+    dataset = BenchmarkDataset("skillret", "test", corpus_text, resources, cases)
+    monkeypatch.setattr(paired_module, "load_sampled_benchmark",
+                        lambda *a, **k: (dataset, cases))
+    monkeypatch.setattr(paired_module, "judge_pair",
+                        lambda state, count: _canned_judgment(count=count))
+    monkeypatch.setenv("TYPESAFE_API_KEY", "test")
+    exclude = tmp_path / "used.json"
+    exclude.write_text(json.dumps({"dataset": {"case_ids": ["q-000", "q-004"]}}), encoding="utf-8")
+    args = argparse.Namespace(
+        bench="skillret", arm="bm25", corpus="plain", query_mode="query",
+        limit=4, window=20, k=(5, 10), data_dir=tmp_path, cache_path=tmp_path / "c.db",
+        fold="top", exclude_report=exclude,
+    )
+    report = paired_module.run(args)
+    output = tmp_path / "report-top.json"
+    output.write_text(json.dumps(report, ensure_ascii=False), encoding="utf-8")
+    return report, output
+
+
+class TestFoldTopAndFreshSampling:
+    """#14 确认臂：P(3) 主折叠 + fresh 采样（滤除 + spread）+ 自校验跟随主折叠。"""
+
+    def test_fresh_sampling_excludes_and_spreads(self, offline_top_report):
+        report, _output = offline_top_report
+        used = {"q-000", "q-004"}
+        sampled = set(report["dataset"]["case_ids"])
+        assert not (sampled & used)
+        assert len(sampled) == 4
+        assert report["configuration"]["primary_fold"] == "top"
+        assert report["configuration"]["exclude_report"].endswith("used.json")
+        assert "fresh spread" in report["configuration"]["sampling"]
+
+    def test_fresh_sampling_rejects_non_skillret(self, tmp_path, monkeypatch):
+        exclude = tmp_path / "used.json"
+        exclude.write_text(json.dumps({"dataset": {"case_ids": ["x"]}}), encoding="utf-8")
+        with pytest.raises(ValueError, match="SkillRet-only"):
+            paired_module.fresh_sampled_benchmark("toolret", tmp_path, 1,
+                                                  corpus="plain", exclude_report=exclude)
+
+    def test_fresh_sampling_needs_enough_remaining(self, tmp_path, monkeypatch):
+        resources = [Resource("r1", "n", "d")]
+        dataset = BenchmarkDataset("skillret", "test", lambda r: r.name,
+                                   resources, [Case("c1", "q", frozenset())])
+        monkeypatch.setattr(paired_module, "load_sampled_benchmark",
+                            lambda *a, **k: (dataset, list(dataset.cases)))
+        exclude = tmp_path / "used.json"
+        exclude.write_text(json.dumps({"dataset": {"case_ids": ["c1"]}}), encoding="utf-8")
+        with pytest.raises(ValueError, match="cases left"):
+            paired_module.fresh_sampled_benchmark("skillret", tmp_path, 1,
+                                                  corpus="plain", exclude_report=exclude)
+
+    def test_top_primary_arm_refolds_to_itself(self, offline_top_report):
+        _report, output = offline_top_report
+        # 自校验：refold("top") 在 primary_fold=top 的报告上逐 case 复算主折叠臂。
+        refolded = refold_report(output, "top")
+        assert len(refolded["cases"]) == 4
+        # expected 在该报告上是敏感性折叠（无自校验断言路径），应可产出可配对臂。
+        sensitivity = refold_report(output, "expected")
+        assert len(sensitivity["cases"]) == 4
 
 
 class TestReportContract:

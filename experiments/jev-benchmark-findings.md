@@ -532,3 +532,65 @@ python -m experiments.benchmarks.ablation_stats pair --a experiments/jev-qt-skil
 python -m experiments.benchmarks.jev_question_paired --bench toolret --arm fusion --corpus docgen --query-mode instruction --limit 100 --window 20 --output experiments/jev-qt-toolret-100.json
 python -m experiments.benchmarks.jev_question_abstain --arm fusion --output experiments/jev-qt-abstain.json
 ```
+
+## Jev P(3)-fold confirmation: primary CI clears, zero-regression fails on symmetric micro-losses — noul retained (2026-11-07)
+
+Pre-registered in issue #14 before any run. #13's sensitivity data picked P(3) as the strongest
+fold post-hoc (winner's-curse risk); this run confirms-or-refutes on a **fresh slice**: the
+SkillRet pinned split minus the 600 case ids used in #13, spread-sampled to 600 (`--exclude-report`,
+machine-verified zero overlap). Same rubric/state/model/batching; primary fold switched to
+P(3) (`--fold top`). Per the user's decisions: no ToolRet secondary surface; abstention precheck
+gate at ≤2/6.
+
+**Gates**: S0-abstention PASS (P(3) ≥ 0.7 on 1/6 negatives — still the bare greeting, P(3)=0.96,
+identical to #13; noul crossed 3/6). S0/S1 well-formedness clean (0 malformed, legend 100%).
+S2 headroom +0.1351 [+0.0865, +0.1881]. S3 pilot +0.0245 [−0.0339, +0.0831] — cleared to full.
+
+**Main result (fresh 600 paired cases):**
+
+| Metric | Δ (P(3) − noul) | CI95 | improved/tied/worsened |
+|---|---|---|---|
+| MRR | +0.0452 | [+0.0230, +0.0679] | 119/419/62 |
+| recall@5 | +0.0094 | [−0.0081, +0.0275] | 42/524/34 |
+| completeness@5 | −0.0033 | [−0.0267, +0.0200] | 24/550/26 |
+| ndcg@5 | +0.0341 | [+0.0168, +0.0520] | 153/351/96 |
+| recall@10 | −0.0011 | [−0.0111, +0.0092] | 9/580/11 |
+| completeness@10 | −0.0017 | [−0.0133, +0.0117] | 7/585/8 |
+| **ndcg@10 (primary)** | **+0.0303** | **[+0.0157, +0.0452]** | 161/336/103 |
+
+**Verdict: noul retained** — the primary CI clears decisively, but three cliff metrics have
+negative point estimates (recall@10 −0.0011, completeness@5/10 −0.0033/−0.0017), so the
+pre-registered zero-regression requirement fails. No discretion applied.
+
+**What the fresh slice establishes**: the effect is real, not selection artifact — P(3) on
+fresh 600 (+0.0303) is ≥ the #13 selection sample (+0.0279); the winner's curse did not
+materialize. The regression pattern is qualitatively different from #13's expected-fold failure:
+there recall@10 worsened 0/588/10 (asymmetric, systematic); here improved≈worsened on every
+cliff metric (9/11, 24/26, 7/8) with |mean| ≤ 0.003 — a symmetric micro-loss consistent with
+P(3)'s 60% tie rate (ties keep stage-1 order; the few reordered cases split both ways at the
+k=5/10 cliffs). Sensitivity folds reproduce #13's ordering exactly: P(3) +0.030 > expected
++0.018 ≈ endpoint +0.018 > P(≥2) −0.053.
+
+**Options going forward** (not decided here): (a) pre-register a "no confident regression"
+variant (cliff metric counts as regressing only when its CI upper bound < 0 — both runs would
+pass; note recall@10's −0.001 sits inside the endpoint's own 0.01 quantization noise) — this is
+a substantive criterion change and needs its own justification and registration, not a retrofit;
+(b) per-scenario coexistence (P(3) on the balanced row where graded ranking is consumed, noul
+where a hard recall floor governs); (c) close the line. Score-as-replacement now has two
+pre-registered failures on zero-regression; any third attempt must justify why its criterion
+differs from (a)'s registered form rather than re-running the same gate.
+
+Cost (measured): ≈ 6.8M input tokens (pilot + full 600 + abstention precheck); score/noul input
+ratio 1.38, unchanged from #13.
+
+Reports: `jev-p3-abstain.json`, `jev-p3-skillret-pilot-40.json`, `jev-p3-skillret-600.json`,
+`jev-p3-skillret-600-refold-{expected,at_least_2,endpoint}.json`.
+
+Reproduce:
+
+```powershell
+python -m experiments.benchmarks.jev_question_abstain --arm fusion --output experiments/jev-p3-abstain.json
+python -m experiments.benchmarks.jev_question_paired --bench skillret --arm fusion --corpus docgen --limit 40 --window 20 --fold top --exclude-report experiments/jev-qt-skillret-600.json --output experiments/jev-p3-skillret-pilot-40.json
+python -m experiments.benchmarks.jev_question_paired --bench skillret --arm fusion --corpus docgen --limit 600 --window 20 --fold top --exclude-report experiments/jev-qt-skillret-600.json --output experiments/jev-p3-skillret-600.json
+python -m experiments.benchmarks.ablation_stats pair --a experiments/jev-p3-skillret-600.json --arm-a jev_score --b experiments/jev-p3-skillret-600.json --arm-b jev_noul --metrics mrr ndcg@5 ndcg@10 recall@5 recall@10 completeness@5 completeness@10
+```
