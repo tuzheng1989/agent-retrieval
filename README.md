@@ -33,9 +33,21 @@ pip install agent-retrieval              # core only (stdlib, zero deps)
 pip install "agent-retrieval[api]"       # + OpenAI-compatible embeddings (requests)
 pip install "agent-retrieval[redis]"     # + Redis vector snapshot store & run cache
 pip install "agent-retrieval[local]"     # + local ONNX embeddings (not available on Windows ARM64)
+pip install "agent-retrieval[judge]"     # + JevJudge (System One) & ChatJudge (requests)
+pip install "agent-retrieval[docgen]"    # + DocGenClient, offline doc2query expansion
 ```
 
 Python ≥ 3.10. Wheels are pure Python — platform-independent.
+
+**Versions newer than the latest PyPI release install from GitHub Releases** —
+CI attaches the built wheel to every tag, and direct-wheel install works
+everywhere (a `git+https` install on default Windows setups fails to clone this
+repo: archived benchmark artifacts under `experiments/archive/` exceed
+`MAX_PATH` unless `git config --global core.longpaths true`):
+
+```bash
+pip install https://github.com/tuzheng1989/agent-retrieval/releases/download/v0.2.0/agent_retrieval-0.2.0-py3-none-any.whl
+```
 
 ## Quickstart
 

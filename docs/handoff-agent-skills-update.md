@@ -98,7 +98,9 @@ pip install "agent-retrieval[docgen]"      # + DocGenClient（requests）
 ## 四、验证清单（更新完成后自查）
 
 1. SKILL.md 的 L4 行与安装矩阵与 `docs/retrieval-config-guide.md`（commit `a2341c2` 后状态）逐字对得上；
-2. 新 judges 文档的代码样例在 0.2.0 上可运行（`pip install agent-retrieval[judge]==0.2.0` 后 import 全部成功）；
+2. 新 judges 文档的代码样例在 0.2.0 上可运行——0.2.0 自 GitHub Release 安装（PyPI 侧 trusted publisher 待修，暂缓）：
+   `pip install https://github.com/tuzheng1989/agent-retrieval/releases/download/v0.2.0/agent_retrieval-0.2.0-py3-none-any.whl`
+   （extras 同样可用：`pip install "agent-retrieval[judge] @ <wheel URL>"`；勿用 `git+https` 做验证——Windows 默认环境 clone 本仓会因 `experiments/archive/` 长路径失败）；
 3. 技能触发词（description frontmatter）酌情补 "Judge 端口"、"ChatJudge"、"P(3)"、"题型"——非必须，按技能维护惯例定。
 
 ## 五、证据出处速查
