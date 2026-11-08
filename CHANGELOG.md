@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.2.0 (2026-11-08)
+
+SDK composition layer: judge ports, declarative corpus projection, docgen
+client and adoption-gate statistics — all behind explicit extras, core stays
+stdlib-only. Component boundaries frozen per ADR-0001 (a component enters the
+SDK only when a scenario-matrix cell needs it; research parts stay in
+`experiments/`).
+
+- **Judge ports** (core, no extra): `Judge` protocol, `JudgedCandidate` /
+  `Judgment`, `select_with_judge` (abstain semantics, no-default
+  `minimum_probability`), `JudgeResponseError`.
+- **Jev judge** (`[judge]` extra): `JevJudge` — System One wire protocol over
+  bare HTTP (requests; no typesafe-sdk dependency), `judge_state` as the
+  single construction point, gateway-retry semantics. Parity against the
+  legacy SDK arm frozen in `judge-parity-legacy.json`.
+- **Chat judge** (`[judge]` extra): `ChatJudge` — judgment over any chat
+  completions endpoint; frozen prompt template (version "1"), temperature
+  pinned at 0.0 into `identity()`, markdown-fenced JSON parsing with backoff.
+- **Corpus projection**: `CorpusProjection` — declarative field projection
+  (include/exclude) for the retrieval face; keeps doc2query expansions out of
+  admission evidence (doc2query-- pattern).
+- **Docgen client** (`[docgen]` extra): `DocGenClient` / `build_docgen` /
+  `docgen_corpus_text` — offline doc2query corpus expansion; thinking-token
+  budget pitfalls documented in the retrieval-config guide.
+- **Adoption-gate stats** (core, stdlib-only): `agent_retrieval.stats` —
+  `paired_bootstrap` (10k resamples, fixed seed), `load_arm_cases`,
+  `paired_report` (case-level paired-diff CI95 with improved/tied/worsened).
+
 ## 0.1.0 (2026-09-25)
 
 Initial release.
